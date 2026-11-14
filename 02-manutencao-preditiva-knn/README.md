@@ -2,7 +2,9 @@
 
 Modelo de classificação que **prevê falhas em máquinas industriais** a partir de leituras de sensores (temperatura, rotação, torque e desgaste da ferramenta). A ideia é trocar a manutenção "quebrou, conserta" por alertas antes da falha.
 
-[![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/renancarbonera04/Trabalhos-Faculdade/blob/main/02-manutencao-preditiva-knn/manutencao_preditiva_knn.ipynb)
+[![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/renancarbonera04/portfolio/blob/main/02-manutencao-preditiva-knn/manutencao_preditiva_knn.ipynb)
+
+Relatório completo: [`relatorio_knn.pdf`](relatorio_knn.pdf) · [Notebook original da disciplina no Colab](https://colab.research.google.com/drive/1f_6aKYDwK1XE7DgAK7pJ6UWvkxB8bWco)
 
 ## Resultado
 
@@ -40,7 +42,7 @@ O notebook termina com uma função `prever_falha()` que recebe as leituras de u
 | Arquivo | Conteúdo |
 |---|---|
 | [`manutencao_preditiva_knn.ipynb`](manutencao_preditiva_knn.ipynb) | Análise completa, do carregamento à função de predição |
-| [`relatorio_knn.pdf`](relatorio_knn.pdf) | Relatório acadêmico (PUC-Campinas) |
+| [`relatorio_knn.pdf`](relatorio_knn.pdf) | Relatório acadêmico (PUC-Campinas), versão atualizada |
 | [`data/ai4i2020_amostra_1000.csv`](data/ai4i2020_amostra_1000.csv) | Amostra usada (separador `;`) |
 
 ## Como rodar
@@ -54,4 +56,4 @@ No Colab, o notebook baixa a amostra direto deste repositório; é só rodar.
 
 ---
 
-Trabalho em equipe com Rafael Frade e Marco, sob orientação do Prof. Dr. Wemerson Delcio Parreira (PUC-Campinas).
+Trabalho em equipe com Marco Antonio Reis e Rafael Frade Trindade, sob orientação do Prof. Dr. Wemerson Delcio Parreira (PUC-Campinas). **Minha parte:** análise exploratória, pré-processamento (normalização e balanceamento com SMOTE) e implementação do modelo KNN.

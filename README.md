@@ -49,8 +49,8 @@ Modelo que prevê falhas de máquinas industriais a partir de sensores (dataset 
 Cada pasta tem um README próprio. Os notebooks têm o botão **Abrir no Colab**. Para rodar localmente:
 
 ```bash
-git clone https://github.com/renancarbonera04/Trabalhos-Faculdade.git
-cd Trabalhos-Faculdade
+git clone https://github.com/renancarbonera04/portfolio.git
+cd portfolio
 pip install -r requirements.txt
 jupyter notebook
 ```

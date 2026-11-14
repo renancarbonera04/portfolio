@@ -7,7 +7,7 @@ Tratei a pergunta como um **Problema de Roteirização de Veículos com Janelas 
 > 📄 Artigo apresentado no **X SAEPRO – Simpósio Acadêmico de Engenharia de Produção (EEL-USP)**, 2026.
 > Autores: Breno Graniero, Murilo Demarchi Silva e Renan Carbonera · Orientação: Prof. Dr. Marcos Ricardo Rosa Georges (PUC-Campinas)
 
-[![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/renancarbonera04/Trabalhos-Faculdade/blob/main/01-roteirizacao-comida-di-buteco/roteirizacao_bares.ipynb)
+[![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/renancarbonera04/portfolio/blob/main/01-roteirizacao-comida-di-buteco/roteirizacao_bares.ipynb)
 
 ## Resultado
 
