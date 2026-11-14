@@ -1,0 +1,126 @@
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="topo-in">
+    <div class="marca">
+      <div class="logo" aria-hidden="true">R$</div>
+      <div><h1>Boletos a cobrar</h1><p id="sub">Abrindo…</p></div>
+    </div>
+    <div class="topo-dir" id="topoDir">
+      <span class="presenca" id="presenca" hidden></span>
+      <button type="button" class="salvo" id="salvo" aria-haspopup="true" title="Situação da gravação na planilha"><span class="pt"></span><span class="txt" id="salvoTxt">Abrindo…</span></button>
+      <button type="button" class="usuario-btn" id="btnUsuario" title="Seu nome (aparece em quem criou/alterou)"></button>
+      <button type="button" class="icone-btn" id="btnTema" title="Tema claro/escuro" aria-label="Alternar tema claro/escuro"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <button type="button" class="icone-btn" id="btnAtalhos" title="Atalhos de teclado (?)" aria-label="Atalhos de teclado">?</button>
+    </div>
+  </div>
+  <nav class="nav" id="nav" aria-label="Telas">
+    <button type="button" class="aba" data-aba="hoje">Hoje <span class="badge" id="badgeHoje" hidden></span></button>
+    <button type="button" class="aba" data-aba="boletos">Boletos <span class="badge" id="badgeVenc" title="Boletos vencidos" hidden></span></button>
+    <button type="button" class="aba" data-aba="novo">Novo lançamento</button>
+    <button type="button" class="aba" data-aba="clientes">Clientes</button>
+    <button type="button" class="aba" data-aba="painel">Painel</button>
+    <button type="button" class="aba" data-aba="calendario">Calendário</button>
+    <button type="button" class="aba" data-aba="conciliacao">Conciliação</button>
+    <button type="button" class="aba" id="abaMais" aria-haspopup="true">Mais ▾</button>
+  </nav>
+</header>
+
+<main>
+  <div id="semJs" class="card aviso-fatal">
+    <h2>O JavaScript está desligado neste navegador</h2>
+    <p>O sistema precisa do JavaScript para funcionar. Abra este arquivo no <b>Microsoft Edge</b> ou no <b>Google Chrome</b>. Se já está num deles, o JavaScript foi desligado nas configurações (ou por regra da empresa): peça ao suporte para liberar o JavaScript para arquivos locais.</p>
+    <p>Enquanto isso, a planilha .xlsx pode ser aberta normalmente no Excel.</p>
+  </div>
+  <noscript><div class="card aviso-fatal"><h2>JavaScript desligado</h2><p>Ative o JavaScript ou abra no Edge/Chrome.</p></div></noscript>
+  <div id="erroFatal" class="card aviso-fatal" hidden>
+    <h2>Algo deu errado no sistema</h2>
+    <p>Suas alterações que ainda não foram gravadas estão guardadas neste navegador e não se perdem. Clique em <b>Recarregar</b>. Se o problema continuar, tire um print desta mensagem e envie para quem cuida do sistema (ou abra <b>Mais › Diagnóstico</b> e clique em "Copiar relatório").</p>
+    <pre id="erroFatalTxt"></pre>
+    <button type="button" class="btn sec" onclick="location.reload()">Recarregar</button>
+  </div>
+
+  <div id="app">
+    <div id="faixas"></div>
+
+    <section class="painel" id="p-inicio"></section>
+    <section class="painel" id="p-hoje"></section>
+    <section class="painel" id="p-boletos"></section>
+    <section class="painel" id="p-novo">
+      <form id="form" novalidate autocomplete="off">
+        <div class="grade2">
+          <div class="card">
+            <h2>1. Cliente</h2>
+            <div class="campos">
+              <div class="campo l2"><label for="fBuscaCli">Procurar cliente cadastrado <span class="opc">(nome, PDV ou CNPJ)</span></label><input id="fBuscaCli" list="dlClientes" placeholder="Comece a digitar…"><div class="dica" id="dicaCli"></div></div>
+              <div class="campo"><label for="setor">Setor do cliente *</label><input id="setor" list="dlSetores" placeholder="Ex.: Varejo"></div>
+              <div class="campo"><label for="pdv">PDV *</label><input id="pdv" list="dlPdvs" placeholder="Código ou nome do PDV"></div>
+              <div class="campo"><label for="doc">CNPJ ou CPF *</label><input id="doc" maxlength="18" placeholder="00.000.000/0000-00"><div class="dica" id="dicaDoc"></div></div>
+              <div class="campo"><label for="cliente">Cliente / razão social</label><input id="cliente"></div>
+              <div class="campo l2"><label for="responsavel">Responsável pela cobrança <span class="opc">(opcional)</span></label><input id="responsavel" list="dlResp"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>2. Boleto</h2>
+            <div class="campos">
+              <div class="campo l2"><label for="linha">Linha digitável ou código de barras <span class="opc">(opcional: preenche valor e vencimento)</span></label><input id="linha" inputmode="numeric" placeholder="Cole aqui os 47/48 números"><div class="dica" id="dicaLinha"></div></div>
+              <div class="campo"><label for="numDoc">Nº do documento / NF <span class="opc">(opcional)</span></label><input id="numDoc"></div>
+              <div class="campo"><label for="nossoNumero">Nosso número <span class="opc">(opcional)</span></label><input id="nossoNumero"></div>
+              <div class="campo l2"><label for="obs">Observação <span class="opc">(opcional)</span></label><input id="obs"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2>3. Valor e parcelas</h2>
+          <div class="campos c3">
+            <div class="campo"><label for="qtd">Quantidade de parcelas</label><input id="qtd" type="number" min="1" max="360" value="1" inputmode="numeric"></div>
+            <div class="campo"><label for="venc1" id="rotVenc">Vencimento *</label><input id="venc1" type="date"></div>
+            <div class="campo"><label for="valor" id="rotValor">Valor *</label><div class="prefixo"><span>R$</span><input id="valor" inputmode="decimal" placeholder="0,00"></div></div>
+            <div class="campo" id="boxModo" hidden><label>O valor digitado é</label>
+              <div class="seg"><input type="radio" name="modo" id="mParc" value="parcela" checked><label for="mParc">de cada parcela</label><input type="radio" name="modo" id="mTotal" value="total"><label for="mTotal">o total (dividir)</label></div></div>
+            <div class="campo" id="boxIntervalo" hidden><label for="intervalo">Intervalo entre parcelas</label><select id="intervalo"><option value="mensal">Todo mês, no mesmo dia</option><option value="dias">A cada X dias</option></select></div>
+            <div class="campo" id="boxDias" hidden><label for="dias">Dias entre parcelas</label><input id="dias" type="number" min="1" max="3650" value="30" inputmode="numeric"></div>
+            <div class="campo" id="boxInicio" hidden><label for="inicio">Lançar a partir da parcela</label><input id="inicio" type="number" min="1" value="1" inputmode="numeric"><div class="dica">Ex.: 2 gera 2/5, 3/5… (quando a 1ª já foi lançada)</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="barra" style="margin-bottom:8px"><h2 style="margin:0">4. Confira as parcelas</h2><span class="dica">Dá para ajustar a data e o valor de cada uma antes de salvar.</span></div>
+          <div class="tabela-wrap">
+            <table class="tabela" style="min-width:440px">
+              <thead><tr><th style="width:80px">Parcela</th><th>Vencimento</th><th style="width:170px">Valor (R$)</th><th style="width:44px"></th></tr></thead>
+              <tbody id="previaCorpo"></tbody>
+            </table>
+          </div>
+          <div class="dica alerta" id="avisoRepetido"></div>
+          <div class="rodape-form">
+            <div id="totalPrevia" class="num"></div>
+            <div class="barra">
+              <select id="selModelo" title="Modelos de lançamento salvos neste navegador" style="width:auto;max-width:200px"><option value="">Modelos…</option></select>
+              <button type="button" class="btn sec" id="btnSalvarModelo" title="Guardar os campos atuais como modelo (para lançamentos que se repetem)">Salvar como modelo</button>
+              <button type="button" class="btn sec" id="btnLimpar">Limpar</button>
+              <button type="submit" class="btn" id="btnSalvar" disabled title="Ctrl+Enter">Salvar boleto</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+    <section class="painel" id="p-clientes"></section>
+    <section class="painel" id="p-painel"></section>
+    <section class="painel" id="p-calendario"></section>
+    <section class="painel" id="p-conciliacao"></section>
+    <section class="painel" id="p-importar"></section>
+    <section class="painel" id="p-lixeira"></section>
+    <section class="painel" id="p-historico"></section>
+    <section class="painel" id="p-verificar"></section>
+    <section class="painel" id="p-config"></section>
+    <section class="painel" id="p-diagnostico"></section>
+    <section class="painel" id="p-ajuda"></section>
+    <section class="painel" id="p-impressao" aria-hidden="true"></section>
+  </div>
+</main>
+
+<datalist id="dlSetores"></datalist><datalist id="dlPdvs"></datalist><datalist id="dlClientes"></datalist><datalist id="dlResp"></datalist>
+<input type="file" id="inputArquivo" hidden>
+<div id="camada"></div>
+<div id="avisos" role="status" aria-live="polite"></div>

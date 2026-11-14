@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Boletos a cobrar</title>
+<!--
+  BOLETOS A COBRAR — versão 2
+  Arquivo único: abra com dois cliques no Microsoft Edge ou no Google Chrome.
+  Funciona sem internet. Os dados ficam numa planilha Excel (.xlsx) na pasta
+  do time (pasta da rede). Nada é enviado para fora do computador.
+  Organização do código (procure pelos títulos em CAIXA ALTA):
+    1. NÚCLEO (funções puras, testadas em Node: testes/)
+       1.1 utilitários, datas, valores, CPF/CNPJ, boleto, juros, CSV/OFX/CNAB
+       1.2 motor XLSX (ZIP, XML, estilos, montagem preservando o que o time criou)
+       1.3 esquema das abas, leitura e escrita da planilha, migração V1
+       1.4 operações e mesclagem (merge por ID) entre os usuários
+       1.5 regras do negócio (lançar, baixar, contato, renegociar, relatórios)
+    2. APLICATIVO (navegador)
+       2.1 base (DOM, avisos, tempo limite, IndexedDB, diagnóstico)
+       2.2 acesso à planilha (permissões em file://, liberar gravação, backups, presença)
+       2.3 sincronização (fila de gravação, releitura + merge, repetição, pendências)
+       2.4 telas
+-->
+<script>
+  /* Antes de tudo: tema, marca de JavaScript ligado e captura de qualquer erro (com aviso visível) */
+  document.documentElement.className += ' js';
+  try { var t = localStorage.getItem('bc2.tema'); if (t === 'escuro' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.setAttribute('data-tema', 'escuro'); } catch (e) {}
+  (function () {
+    var pendentes = [];
+    function mostrar(txt) {
+      var box = document.getElementById('erroFatal'), pre = document.getElementById('erroFatalTxt');
+      if (!box || !pre) { pendentes.push(txt); return; }
+      pre.textContent += (pre.textContent ? '\n' : '') + txt;
+      box.hidden = false;
+    }
+    window.__mostrarErro = mostrar;
+    document.addEventListener('DOMContentLoaded', function () { var f = pendentes; pendentes = []; for (var i = 0; i < f.length; i++) mostrar(f[i]); });
+    window.addEventListener('error', function (e) {
+      if (!e.lineno && /^Script error/i.test(e.message || '')) return;
+      mostrar((e.message || 'Erro desconhecido') + (e.lineno ? ' (linha ' + e.lineno + ')' : ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      if (r && r.__tratado) return;
+      mostrar('Falha: ' + (r && r.name ? r.name + ': ' + r.message : String(r)));
+    });
+    /* Vigia: se o código principal não chegar ao fim, avisa em vez de deixar a tela parada */
+    window.addEventListener('load', function () {
+      setTimeout(function () { if (!window.__appOk) mostrar('O sistema não terminou de carregar (o código principal parou no meio). Recarregue a página; se continuar, envie um print desta mensagem.'); }, 4000);
+    });
+  })();
+</script>
+<style>

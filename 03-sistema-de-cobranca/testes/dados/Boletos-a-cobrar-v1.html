@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boletos a cobrar</title>
+<!--
+  BOLETOS A COBRAR
+  Arquivo único: abra com dois cliques no Microsoft Edge ou no Google Chrome.
+  Funciona sem internet. Os boletos ficam gravados numa planilha Excel (.xlsx)
+  que você escolhe no seu computador. Nada é enviado para fora do computador.
+-->
+<script>
+  /* Mostra na tela qualquer erro que impeça o cadastro de funcionar */
+  document.documentElement.className += ' js';
+  (function () {
+    var pendentes = [];
+    function mostrar(txt) {
+      var box = document.getElementById('erroFatal'), pre = document.getElementById('erroFatalTxt');
+      if (!box || !pre) { pendentes.push(txt); return; }
+      pre.textContent += (pre.textContent ? '\n' : '') + txt;
+      box.hidden = false;
+    }
+    document.addEventListener('DOMContentLoaded', function () { var f = pendentes; pendentes = []; for (var i = 0; i < f.length; i++) mostrar(f[i]); });
+    window.addEventListener('error', function (e) {
+      if (!e.lineno && /^Script error/i.test(e.message || '')) return;
+      mostrar((e.message || 'Erro desconhecido') + (e.lineno ? ' (linha ' + e.lineno + ')' : ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      mostrar('Falha: ' + (r && r.name ? r.name + ': ' + r.message : String(r)));
+    });
+    window.addEventListener('load', function () {
+      setTimeout(function () { if (!window.__cadastroOk) mostrar('O cadastro não terminou de carregar (o código principal não rodou até o fim).'); }, 1500);
+    });
+  })();
+</script>
+<style>
+  :root{
+    --bg:#f3f4f1; --card:#fff; --ink:#1b2220; --muted:#66706b; --soft:#8a938e;
+    --line:#e1e4df; --line2:#eef0ec; --field:#d3d8d2;
+    --accent:#1d6a56; --accent-dk:#155141; --accent-bg:#e6f1ed;
+    --danger:#b3261e; --danger-bg:#fcebe9;
+    --warn:#8f5600; --warn-bg:#fff3d4;
+    --ok:#1d7544; --ok-bg:#e4f3e9;
+    --gray:#f0f2ef; --r:10px; --shadow:0 1px 2px rgba(20,30,25,.05);
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+  button,input,select{font:inherit;color:inherit}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- topo ---------- */
+  .topo{position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--line)}
+  .topo-in{max-width:1080px;margin:0 auto;padding:12px 16px 0;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:4px 16px}
+  .marca{display:flex;align-items:center;gap:10px;padding-bottom:12px;min-width:0}
+  .logo{flex:none;width:36px;height:36px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .marca h1{margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .marca p{margin:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topo-dir{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;min-width:0}
+  .arq{position:relative;padding-bottom:7px;min-width:0}
+  .chip-arq{display:inline-flex;align-items:center;gap:7px;height:30px;max-width:330px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
+  .chip-arq:hover{border-color:#c9d0c9}
+  .chip-arq .pt{width:8px;height:8px;border-radius:50%;background:var(--soft);flex:none}
+  .chip-arq .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip-arq.ok .pt{background:var(--ok)}
+  .chip-arq.erro{border-color:#f0c4c0;background:var(--danger-bg);color:var(--danger)}
+  .chip-arq.erro .pt{background:var(--danger)}
+  .chip-arq.nav{border-color:#f1dca3;background:var(--warn-bg);color:var(--warn)}
+  .chip-arq.nav .pt{background:#e2a400}
+  .menu{position:absolute;right:0;top:calc(100% - 2px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px;width:290px;z-index:20}
+  .menu .info{padding:8px 10px 10px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line2);margin-bottom:4px;overflow-wrap:anywhere}
+  .menu .info b{color:var(--ink)}
+  .menu .info.erro{color:var(--danger)}
+  .menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:7px;cursor:pointer}
+  .menu button:hover{background:var(--gray)}
+  .menu button.dest{color:var(--accent);font-weight:650}
+  .abas{display:flex;gap:2px}
+  .aba{border:0;background:none;padding:10px 14px 11px;border-bottom:2px solid transparent;color:var(--muted);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .aba:hover{color:var(--ink)}
+  .aba.ativa{color:var(--accent);border-bottom-color:var(--accent)}
+  .badge{background:var(--danger);color:#fff;border-radius:99px;font-size:11px;line-height:18px;min-width:18px;padding:0 6px;font-weight:700;text-align:center}
+
+  main{max-width:1080px;margin:0 auto;padding:16px 16px 40px}
+  .painel{display:none}
+  .painel.ativo{display:block}
+
+  /* ---------- avisos de falha ---------- */
+  .aviso-fatal{max-width:680px;margin:12px auto 16px;border-color:#f0c4c0;background:#fffafa}
+  .aviso-fatal h2{margin:0 0 6px;font-size:17px;color:var(--danger)}
+  .aviso-fatal p{margin:0 0 10px;color:#3a4440}
+  .aviso-fatal ol{margin:0;padding-left:20px;color:#3a4440}
+  .aviso-fatal pre{white-space:pre-wrap;word-break:break-word;background:var(--gray);border-radius:8px;padding:10px;font-size:12px;margin:0 0 12px}
+  #semJs{display:block}
+  .js #semJs{display:none}
+  html:not(.js) #telaInicio{display:none!important}
+  #inicioStatus{margin-top:12px;color:var(--accent);font-weight:600}
+  .menu .info small{display:block;margin-top:6px;color:var(--soft);font-size:11px}
+
+  /* ---------- tela inicial ---------- */
+  .inicio{max-width:680px;margin:12px auto 0}
+  .inicio-card{padding:24px}
+  .inicio h2{margin:0 0 6px;font-size:20px;letter-spacing:-.01em}
+  .lead{margin:0 0 18px;color:var(--muted)}
+  .btn.grande{height:46px;width:100%;font-size:15px;margin-bottom:14px}
+  .btn.grande b{overflow:hidden;text-overflow:ellipsis}
+  .opcoes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .opcao{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:16px;border:1px solid var(--field);border-radius:10px;background:#fff;cursor:pointer}
+  .opcao:hover{border-color:var(--accent);background:#fafcfb}
+  .opcao svg{color:var(--accent);margin-bottom:6px}
+  .opcao b{font-size:14.5px}
+  .opcao span{font-size:12.5px;color:var(--muted)}
+  .sem-arquivo{background:var(--warn-bg);border-radius:10px;padding:14px;margin-top:12px}
+  .sem-arquivo p{margin:0 0 12px;color:#5c3d00}
+  .botoes-ini{display:flex;flex-wrap:wrap;gap:8px}
+  .passos{margin:18px 0 0;padding:14px 16px 14px 34px;background:var(--gray);border-radius:10px;color:#3a4440;font-size:13px}
+  .passos li{margin:3px 0}
+  #inicioErro{margin-top:12px}
+
+  /* ---------- cartões e campos ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+  .grade{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .titulo-card{display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:14px;font-weight:700}
+  .passo{width:22px;height:22px;border-radius:50%;background:var(--accent-bg);color:var(--accent);display:grid;place-items:center;font-size:12px;font-weight:700}
+  .card-topo{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin-bottom:6px}
+  .card-topo .titulo-card{margin:0}
+  .campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .campo{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .campo.l2{grid-column:1/-1}
+  label{font-size:12.5px;font-weight:600;color:#3a4440}
+  .opc{font-weight:400;color:var(--soft)}
+  input,select{height:38px;width:100%;border:1px solid var(--field);border-radius:8px;padding:0 10px;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,106,86,.16)}
+  input::placeholder{color:#a3aba6}
+  .campo.invalido input,td.invalido input{border-color:var(--danger);box-shadow:0 0 0 3px rgba(179,38,30,.12)}
+  .dica{font-size:12px;color:var(--muted)}
+  .dica:empty{display:none}
+  .dica.ok{color:var(--ok)}
+  .dica.erro{color:var(--danger)}
+  #dicaPdv{margin-top:10px}
+  .prefixo{position:relative}
+  .prefixo span{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--soft);font-size:13px;pointer-events:none}
+  .prefixo input{padding-left:36px}
+  .seg{display:flex;gap:3px;background:var(--gray);border-radius:9px;padding:3px}
+  .seg input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+  .seg label{flex:1;text-align:center;padding:7px 8px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:600}
+  .seg input:checked+label{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .seg input:focus-visible+label{outline:2px solid var(--accent)}
+
+  /* ---------- prévia das parcelas ---------- */
+  .tabela-wrap{overflow-x:auto}
+  .tabela{width:100%;border-collapse:collapse;min-width:440px}
+  .tabela th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:8px;border-bottom:1px solid var(--line)}
+  .tabela td{padding:7px 8px;border-bottom:1px solid var(--line2);vertical-align:middle}
+  .tabela input{height:34px}
+  .tabela .dir{text-align:right}
+  .venc-cel{display:flex;align-items:center;gap:10px}
+  .venc-cel input{max-width:170px}
+  .ds{font-size:12px;color:var(--soft);white-space:nowrap}
+  .ds.alerta{color:var(--warn)}
+  .ds.erro{color:var(--danger)}
+  .vazio-previa{color:var(--muted);text-align:center;padding:22px 8px!important}
+  .rodape-form{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+  #totalPrevia{color:var(--muted)}
+  #totalPrevia b{color:var(--ink);font-size:15px}
+  .botoes{display:flex;gap:8px;margin-left:auto}
+
+  /* ---------- botões ---------- */
+  .btn{height:38px;padding:0 16px;border-radius:8px;border:1px solid transparent;background:var(--accent);color:#fff;font-weight:650;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
+  .btn:hover{background:var(--accent-dk)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.sec{background:#fff;color:var(--ink);border-color:var(--field)}
+  .btn.sec:hover{background:var(--gray)}
+  .btn.perigo{background:var(--danger)}
+  .icone{width:32px;height:32px;border:0;border-radius:8px;background:none;color:var(--soft);display:inline-grid;place-items:center;cursor:pointer;flex:none}
+  .icone:hover{background:var(--gray);color:var(--ink)}
+  .icone.del:hover{background:var(--danger-bg);color:var(--danger)}
+  .btn-ok{height:30px;padding:0 10px;border-radius:7px;border:1px solid #bfe0cb;background:var(--ok-bg);color:var(--ok);font-weight:650;font-size:12.5px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+  .btn-ok:hover{background:#d3ecdc}
+  .parc{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--accent-bg);color:var(--accent);border:0;white-space:nowrap}
+  button.parc{cursor:pointer}
+  button.parc:hover{background:#d3e8df}
+
+  /* ---------- painel ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+  .kpi{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow);cursor:pointer}
+  .kpi:hover{border-color:#c9d0c9}
+  .kpi span{display:block;font-size:12px;font-weight:600;color:var(--muted)}
+  .kpi strong{display:block;font-size:20px;font-weight:700;margin-top:2px;letter-spacing:-.01em}
+  .kpi small{display:block;font-size:12px;color:var(--soft);min-height:17px}
+  .kpi.perigo{border-top-color:var(--danger)}
+  .kpi.perigo strong{color:var(--danger)}
+  .kpi.alerta{border-top-color:#e2a400}
+  .kpi.mes{border-top-color:var(--accent)}
+  .filtros{display:flex;flex-wrap:wrap;gap:8px;padding:10px;margin-bottom:14px}
+  .filtros input{flex:1 1 260px;width:auto}
+  .filtros select{flex:0 1 190px;width:auto}
+  .chip-lanc{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-bg);color:var(--accent-dk);border-radius:var(--r);padding:9px 12px;margin-bottom:14px;font-size:13px}
+  .chip-lanc button{margin-left:auto;border:0;background:#fff;border-radius:7px;padding:5px 10px;font-weight:600;cursor:pointer;color:var(--accent-dk)}
+  .resumo-filtro{font-size:12.5px;color:var(--muted);margin:0 4px 10px}
+  .grupo{margin-bottom:18px}
+  .grupo-topo{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:0 4px 8px}
+  .grupo-topo h3{margin:0;font-size:14px;font-weight:700}
+  .grupo-topo h3::first-letter{text-transform:uppercase}
+  .pill{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-bg);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:1px}
+  .pill.atraso{color:var(--danger);background:var(--danger-bg)}
+  .grupo-topo .tot{font-size:12.5px;color:var(--muted);white-space:nowrap}
+  .grupo-topo .tot b{color:var(--ink)}
+  .lista-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+  .item{display:grid;grid-template-columns:56px minmax(0,1fr) 190px 120px max-content;grid-template-areas:"data info meta valor acoes";align-items:center;gap:6px 14px;padding:10px 14px;border-top:1px solid var(--line2);position:relative}
+  .item:first-child{border-top:0}
+  .item.st-vencido::before,.item.st-hoje::before,.item.st-breve::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--danger)}
+  .item.st-breve::before{background:#e2a400}
+  .item.ocupado{opacity:.45;pointer-events:none}
+  .data{grid-area:data;text-align:center;line-height:1.15}
+  .data b{display:block;font-size:15px}
+  .data span{font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em}
+  .info{grid-area:info;min-width:0}
+  .t1{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t2{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta{grid-area:meta;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .valor{grid-area:valor;text-align:right;font-weight:700;font-size:15px;white-space:nowrap}
+  .acoes{grid-area:acoes;display:flex;justify-content:flex-end;align-items:center;gap:2px}
+  .tag{font-size:12px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
+  .tag.vencido{background:var(--danger-bg);color:var(--danger)}
+  .tag.hoje{background:var(--danger);color:#fff}
+  .tag.breve{background:var(--warn-bg);color:var(--warn)}
+  .tag.futuro{background:var(--gray);color:var(--muted)}
+  .tag.pago{background:var(--ok-bg);color:var(--ok)}
+  .tag.cancelado{background:var(--gray);color:var(--soft)}
+  .st-pago .valor,.st-cancelado .valor{color:var(--soft)}
+  .st-cancelado .t1,.st-cancelado .valor{text-decoration:line-through}
+  .vazio{text-align:center;padding:40px 16px;color:var(--muted)}
+  .vazio b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+
+  /* ---------- aviso e confirmação ---------- */
+  #toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,16px);background:#1b2220;color:#fff;padding:10px 16px;border-radius:9px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:40;max-width:min(560px,calc(100vw - 32px));box-shadow:0 6px 20px rgba(0,0,0,.18)}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+  #toast.erro{background:var(--danger)}
+  .modal{position:fixed;inset:0;background:rgba(20,26,24,.45);display:grid;place-items:center;z-index:30;padding:16px}
+  .modal-box{background:#fff;border-radius:12px;max-width:440px;width:100%;padding:20px;box-shadow:0 12px 32px rgba(0,0,0,.22)}
+  .modal-box h3{margin:0 0 8px;font-size:16px}
+  .modal-box p{margin:0 0 18px;color:var(--muted)}
+  .modal-acoes{display:flex;justify-content:flex-end;gap:8px}
+
+  @media (max-width:820px){
+    .grade{grid-template-columns:1fr}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .item{grid-template-columns:46px minmax(0,1fr) auto;grid-template-areas:"data info valor" "data meta acoes";padding:10px 12px}
+    .chip-arq{max-width:240px}
+  }
+  @media (max-width:560px){
+    .opcoes{grid-template-columns:1fr}
+    .inicio-card{padding:18px}
+  }
+  @media (max-width:480px){
+    .campos{grid-template-columns:1fr}
+    .aba{padding:9px 10px 10px}
+    .kpi strong{font-size:17px}
+    .btn-ok span{display:none}
+    .filtros select{flex:1 1 140px}
+    .menu{width:min(290px,calc(100vw - 32px))}
+  }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-in">
+    <div class="marca">
+      <div class="logo">R$</div>
+      <div><h1>Boletos a cobrar</h1><p id="sub"></p></div>
+    </div>
+    <div class="topo-dir" id="topoDir" hidden>
+      <div class="arq">
+        <button type="button" class="chip-arq" id="chipArq" aria-haspopup="true" aria-expanded="false"><span class="pt"></span><span class="txt" id="chipTxt"></span></button>
+        <div class="menu" id="menuArq" hidden></div>
+      </div>
+      <nav class="abas">
+        <button type="button" class="aba ativa" data-aba="novo">Novo lançamento</button>
+        <button type="button" class="aba" data-aba="lista">Boletos <span id="badgeVenc" class="badge" title="Parcelas vencidas" hidden></span></button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ================= TELA INICIAL ================= -->
+  <div id="semJs" class="card aviso-fatal">
+    <h2>O cadastro não conseguiu rodar neste navegador</h2>
+    <p>O navegador está bloqueando o funcionamento desta página. Isso costuma acontecer com arquivos abertos direto de uma pasta da rede.</p>
+    <ol>
+      <li>Copie o arquivo <b>Boletos-a-cobrar.html</b> para a sua Área de Trabalho ou para Documentos.</li>
+      <li>Abra a cópia com dois cliques, no Microsoft Edge ou no Google Chrome.</li>
+    </ol>
+  </div>
+  <div id="erroFatal" class="card aviso-fatal" hidden>
+    <h2>Algo deu errado no cadastro</h2>
+    <p>Tire um print desta mensagem e envie para quem montou o cadastro. Depois clique em Recarregar.</p>
+    <pre id="erroFatalTxt"></pre>
+    <button type="button" class="btn sec" onclick="location.reload()">Recarregar</button>
+  </div>
+
+  <section id="telaInicio" class="inicio">
+    <div class="card inicio-card">
+      <h2>Onde ficam seus boletos</h2>
+      <p class="lead">Os boletos são gravados numa planilha do Excel que fica no seu computador (ou na sua pasta do OneDrive). Este cadastro lê e grava nela, sem internet. Nada sai do seu computador.</p>
+
+      <button type="button" class="btn grande" id="btnContinuar" hidden></button>
+
+      <div class="opcoes" id="opcoesArquivo">
+        <button type="button" class="opcao" id="btnCriar">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11v6M9 14h6"/></svg>
+          <b>Criar planilha nova</b><span>Você escolhe o nome e a pasta onde ela fica.</span>
+        </button>
+        <button type="button" class="opcao" id="btnAbrir">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 7v10a2 2 0 0 0 2 2h13l3-8H7l-3 8"/></svg>
+          <b>Abrir planilha existente</b><span>Uma planilha já criada por este cadastro.</span>
+        </button>
+      </div>
+
+      <div class="sem-arquivo" id="semArquivo" hidden>
+        <p id="semArquivoTxt"></p>
+        <div class="botoes-ini">
+          <button type="button" class="btn" id="btnNavegador">Usar guardando neste navegador</button>
+          <button type="button" class="btn sec" id="btnImportarIni">Importar planilha (.xlsx)</button>
+        </div>
+      </div>
+
+      <p class="dica" id="inicioStatus"></p>
+      <p class="dica erro" id="inicioErro"></p>
+
+      <ol class="passos" id="passos">
+        <li>Crie a planilha numa pasta sua. Uma pasta do OneDrive é a melhor opção, porque fica com backup.</li>
+        <li>Lance os boletos aqui. Cada mudança é gravada na planilha na hora.</li>
+        <li>Abra a planilha no Excel quando quiser, mas <b>feche o Excel antes de lançar por aqui</b>.</li>
+        <li>Da próxima vez, abra este arquivo e clique em <b>Continuar</b>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================= NOVO LANÇAMENTO ================= -->
+  <section id="aba-novo" class="painel">
+    <form id="form" novalidate autocomplete="off">
+      <div class="grade">
+        <div class="card">
+          <h2 class="titulo-card"><span class="passo">1</span> Cliente</h2>
+          <div class="campos">
+            <div class="campo"><label for="setor">Setor do cliente *</label><input id="setor" list="dlSetores" placeholder="Ex.: Varejo, Farmácias…"></div>
+            <div class="campo"><label for="pdv">PDV *</label><input id="pdv" list="dlPdvs" placeholder="Código ou nome do PDV"></div>
+            <div class="campo l2"><label for="cliente">Cliente / razão social <span class="opc">(opcional)</span></label><input id="cliente"></div>
+            <div class="campo"><label for="doc">CNPJ ou CPF *</label><input id="doc" maxlength="18" placeholder="00.000.000/0000-00"><div class="dica" id="dicaDoc"></div></div>
+            <div class="campo"><label for="numDoc">Nº do boleto <span class="opc">(opcional)</span></label><input id="numDoc"></div>
+            <div class="campo l2"><label for="obs">Observação <span class="opc">(opcional)</span></label><input id="obs"></div>
+          </div>
+          <div class="dica" id="dicaPdv"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="titulo-card"><span class="passo">2</span> Valor e parcelas</h2>
+          <div class="campos">
+            <div class="campo"><label for="qtd">Quantidade de parcelas</label><input id="qtd" type="number" min="1" max="120" value="1" inputmode="numeric"></div>
+            <div class="campo"><label for="venc1" id="rotVenc">Vencimento *</label><input id="venc1" type="date"></div>
+            <div class="campo l2" id="boxModo" hidden>
+              <label>O valor digitado é</label>
+              <div class="seg">
+                <input type="radio" name="modo" id="mParc" value="parcela" checked><label for="mParc">de cada parcela</label>
+                <input type="radio" name="modo" id="mTotal" value="total"><label for="mTotal">o total (dividir)</label>
+              </div>
+            </div>
+            <div class="campo"><label for="valor" id="rotValor">Valor *</label><div class="prefixo"><span>R$</span><input id="valor" inputmode="decimal" placeholder="0,00"></div></div>
+            <div class="campo" id="boxIntervalo" hidden>
+              <label for="intervalo">Intervalo entre parcelas</label>
+              <select id="intervalo"><option value="mensal">Todo mês, no mesmo dia</option><option value="dias">A cada X dias</option></select>
+            </div>
+            <div class="campo" id="boxDias" hidden><label for="dias">Dias entre parcelas</label><input id="dias" type="number" min="1" max="365" value="30" inputmode="numeric"></div>
+            <div class="campo" id="boxInicio" hidden>
+              <label for="inicio">Lançar a partir da parcela</label><input id="inicio" type="number" min="1" value="1" inputmode="numeric">
+              <div class="dica">Ex.: 2 gera 2/5, 3/5… (quando a 1ª já foi lançada)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-topo">
+          <h2 class="titulo-card"><span class="passo">3</span> Confira as parcelas</h2>
+          <span class="dica">Dá para ajustar a data e o valor de cada uma antes de salvar.</span>
+        </div>
+        <div class="tabela-wrap">
+          <table class="tabela">
+            <thead><tr><th style="width:84px">Parcela</th><th>Vencimento</th><th style="width:170px">Valor (R$)</th><th style="width:44px"></th></tr></thead>
+            <tbody id="previaCorpo"></tbody>
+          </table>
+        </div>
+        <div class="rodape-form">
+          <div id="totalPrevia" class="num"></div>
+          <div class="botoes">
+            <button type="button" class="btn sec" id="btnLimpar">Limpar</button>
+            <button type="submit" class="btn" id="btnSalvar" disabled>Salvar boleto</button>
+          </div>
+        </div>
+      </div>
+    </form>
+    <datalist id="dlSetores"></datalist>
+    <datalist id="dlPdvs"></datalist>
+  </section>
+
+  <!-- ================= BOLETOS LANÇADOS ================= -->
+  <section id="aba-lista" class="painel">
+    <div class="kpis">
+      <button type="button" class="kpi perigo" data-filtro="vencido"><span>Vencidos</span><strong class="num" id="kVenc">—</strong><small id="kVencQ"></small></button>
+      <button type="button" class="kpi alerta" data-filtro="semana"><span>Vencem em 7 dias</span><strong class="num" id="kSem">—</strong><small id="kSemQ"></small></button>
+      <button type="button" class="kpi mes" data-filtro="mes"><span id="kMesRot">A receber no mês</span><strong class="num" id="kMes">—</strong><small id="kMesQ"></small></button>
+      <button type="button" class="kpi" data-filtro="aberto"><span>Total em aberto</span><strong class="num" id="kTot">—</strong><small id="kTotQ"></small></button>
+    </div>
+
+    <div class="filtros card">
+      <input type="search" id="fBusca" placeholder="Buscar cliente, PDV, CNPJ/CPF, nº do boleto…">
+      <select id="fSetor"><option value="">Todos os setores</option></select>
+      <select id="fStatus">
+        <option value="aberto">Em aberto</option>
+        <option value="vencido">Só vencidos</option>
+        <option value="semana">Vencem em 7 dias</option>
+        <option value="mes">Vencem neste mês</option>
+        <option value="pago">Pagos</option>
+        <option value="cancelado">Cancelados</option>
+        <option value="todos">Todos</option>
+      </select>
+      <button type="button" class="btn sec" id="btnAtualizar" title="Reler a planilha (se você mexeu nela pelo Excel)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>
+        Reler planilha
+      </button>
+    </div>
+
+    <div id="chipLanc" class="chip-lanc" hidden>
+      <span>Todas as parcelas do lançamento <b id="chipLancN"></b></span>
+      <button type="button" id="chipLancX">Voltar à lista</button>
+    </div>
+    <div id="resumoFiltro" class="resumo-filtro"></div>
+    <div id="lista"></div>
+  </section>
+</main>
+
+<input type="file" id="inputImport" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mTitulo">
+    <h3 id="mTitulo"></h3>
+    <p id="mTexto"></p>
+    <div class="modal-acoes">
+      <button type="button" class="btn sec" id="mNao">Voltar</button>
+      <button type="button" class="btn" id="mSim">Confirmar</button>
+    </div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+/* =========================================================
+   Utilidades
+   ========================================================= */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const NUM2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS = ['dom','seg','ter','qua','qui','sex','sáb'];
+const DIAS_LONGO = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+const svg = d => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  check: svg('<path d="M20 6 9 17l-5-5"/>'),
+  x: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
+  ban: svg('<circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/>'),
+  undo: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),
+  trash: svg('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>')
+};
+
+const pad = n => String(n).padStart(2, '0');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const limitar = (n, a, b) => Math.min(Math.max(n, a), b);
+const somaCentavos = arr => arr.reduce((s, b) => s + Math.round((b.valor || 0) * 100), 0) / 100;
+const plural = (n, s, p) => `${n} ${n === 1 ? s : (p || s + 's')}`;
+const arred2 = n => Math.round(n * 100) / 100;
+
+function hojeLocal() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
+/* Datas como texto "aaaa-mm-dd", calculadas em UTC para nunca "pular" um dia */
+function partes(iso) { const [y, m, d] = iso.split('-').map(Number); return { y, m, d }; }
+function somaDias(iso, n) { const { y, m, d } = partes(iso); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
+function somaMeses(iso, k) {
+  const { y, m, d } = partes(iso);
+  const ultimoDia = new Date(Date.UTC(y, m + k, 0)).getUTCDate();      // 31/01 + 1 mês = 28/02 (ou 29)
+  return new Date(Date.UTC(y, m - 1 + k, Math.min(d, ultimoDia))).toISOString().slice(0, 10);
+}
+function difDias(a, b) { return Math.round((Date.parse(a + 'T00:00:00Z') - Date.parse(b + 'T00:00:00Z')) / 864e5); }
+function diaSemana(iso) { return new Date(iso + 'T00:00:00Z').getUTCDay(); }
+function fmtData(iso) { if (!iso) return ''; const { y, m, d } = partes(iso); return `${pad(d)}/${pad(m)}/${y}`; }
+function nomeMes(ym) { const [y, m] = ym.split('-').map(Number); return `${MESES[m - 1]} de ${y}`; }
+
+/* "1.234,56" / "1234,56" / "1234.56" -> 1234.56 */
+function lerValor(s) {
+  s = String(s || '').replace(/[^\d,.\-]/g, '');
+  if (!s) return NaN;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  const n = parseFloat(s);
+  return isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+}
+
+/* CPF / CNPJ (inclui o CNPJ alfanumérico, com letras) */
+const docLimpo = v => String(v || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+function mascara(s, m) { let o = '', i = 0; for (const c of m) { if (i >= s.length) break; o += c === '#' ? s[i++] : c; } return o; }
+function formatarDoc(v) {
+  const s = docLimpo(v).slice(0, 14);
+  return (s.length <= 11 && /^\d*$/.test(s)) ? mascara(s, '###.###.###-##') : mascara(s, '##.###.###/####-##');
+}
+function cpfValido(s) {
+  if (!/^\d{11}$/.test(s) || /^(\d)\1{10}$/.test(s)) return false;
+  const dv = n => { let soma = 0; for (let i = 0; i < n; i++) soma += +s[i] * (n + 1 - i); const r = (soma * 10) % 11; return r === 10 ? 0 : r; };
+  return dv(9) === +s[9] && dv(10) === +s[10];
+}
+function cnpjValido(s) {
+  if (!/^[0-9A-Z]{12}\d{2}$/.test(s) || /^(\d)\1{13}$/.test(s)) return false;
+  const val = c => c.charCodeAt(0) - 48;
+  const dv = n => {
+    const pesos = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+    let soma = 0; for (let i = 0; i < n; i++) soma += val(s[i]) * pesos[i];
+    const r = soma % 11; return r < 2 ? 0 : 11 - r;
+  };
+  return dv(12) === +s[12] && dv(13) === +s[13];
+}
+function checarDoc(v) {
+  const s = docLimpo(v);
+  if (!s) return { vazio: true, ok: false };
+  if (/^\d{11}$/.test(s)) return { tipo: 'CPF', ok: cpfValido(s) };
+  if (s.length === 14) return { tipo: 'CNPJ', ok: cnpjValido(s) };
+  return { incompleto: true, ok: false };
+}
+
+let tTimer;
+function toast(msg, erro) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('erro', !!erro);
+  t.classList.add('on');
+  clearTimeout(tTimer);
+  tTimer = setTimeout(() => t.classList.remove('on'), erro ? 7000 : 2800);
+}
+
+function confirmar(titulo, texto, rotuloSim = 'Confirmar', perigo = false, rotuloNao = 'Voltar') {
+  return new Promise(resolver => {
+    const m = $('#modal'), sim = $('#mSim'), nao = $('#mNao');
+    $('#mTitulo').textContent = titulo;
+    $('#mTexto').textContent = texto;
+    sim.textContent = rotuloSim;
+    nao.textContent = rotuloNao;
+    sim.classList.toggle('perigo', perigo);
+    m.hidden = false;
+    sim.focus();
+    const tecla = e => { if (e.key === 'Escape') fim(false); };
+    const fim = v => { m.hidden = true; sim.onclick = nao.onclick = m.onclick = null; document.removeEventListener('keydown', tecla); resolver(v); };
+    sim.onclick = () => fim(true);
+    nao.onclick = () => fim(false);
+    m.onclick = e => { if (e.target === m) fim(false); };
+    document.addEventListener('keydown', tecla);
+  });
+}
+
+function baixarArquivo(blob, nome) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+
+/* =========================================================
+   PLANILHA EXCEL (.xlsx) — gravação e leitura, sem bibliotecas
+   ========================================================= */
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const XML_TOPO = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+
+const xEsc = s => String(s)
+  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const letraCol = n => { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+const numCol = s => { let n = 0; for (const ch of s.toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n; };
+
+function isoParaSerial(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 864e5) : null;
+}
+function serialParaIso(n) { return new Date(Date.UTC(1899, 11, 30) + Math.floor(n) * 864e5).toISOString().slice(0, 10); }
+function agoraSerial() { const d = new Date(); return isoParaSerial(hojeLocal()) + (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86400; }
+function primeiroDoMes(iso, k = 0) { const { y, m } = partes(iso); return new Date(Date.UTC(y, m - 1 + k, 1)).toISOString().slice(0, 10); }
+
+/* Colunas da aba "Boletos" */
+const COLS = [
+  { k: 'vencimento', h: 'Vencimento',    w: 12, s: 'data',    tipo: 'data' },
+  { k: 'status',     h: 'Status',        w: 12, s: 'centro',  tipo: 'txt'  },
+  { k: 'valor',      h: 'Valor',         w: 14, s: 'moeda',   tipo: 'num'  },
+  { k: 'parcela',    h: 'Parcela',       w: 9,  s: 'parc',    tipo: 'txt'  },
+  { k: 'setor',      h: 'Setor',         w: 18, s: 'padrao',  tipo: 'txt'  },
+  { k: 'pdv',        h: 'PDV',           w: 14, s: 'texto',   tipo: 'txt'  },
+  { k: 'cliente',    h: 'Cliente',       w: 30, s: 'padrao',  tipo: 'txt'  },
+  { k: 'doc',        h: 'CNPJ/CPF',      w: 20, s: 'texto',   tipo: 'txt'  },
+  { k: 'numDoc',     h: 'Nº documento',  w: 16, s: 'texto',   tipo: 'txt'  },
+  { k: 'obs',        h: 'Observação',    w: 32, s: 'padrao',  tipo: 'txt'  },
+  { k: 'pagoEm',     h: 'Pago em',       w: 12, s: 'data',    tipo: 'data' },
+  { k: 'id',         h: 'ID',            w: 7,  s: 'cinza',   tipo: 'num'  },
+  { k: 'lancamento', h: 'Lançamento',    w: 12, s: 'cinza',   tipo: 'num'  },
+  { k: 'criado',     h: 'Cadastrado em', w: 17, s: 'cinzaDt', tipo: 'num'  }
+];
+/* Nomes aceitos no cabeçalho ao ler (caso alguém renomeie ou reordene no Excel) */
+const ALIAS = {
+  vencimento: ['vencimento', 'venc', 'datavencimento', 'datadevencimento'],
+  status: ['status', 'situacao'],
+  valor: ['valor', 'valorr', 'valorrs'],
+  parcela: ['parcela', 'parc', 'parcelas'],
+  setor: ['setor', 'setordocliente'],
+  pdv: ['pdv'],
+  cliente: ['cliente', 'razaosocial', 'clienterazaosocial', 'nome'],
+  doc: ['cnpjcpf', 'cpfcnpj', 'cnpj', 'cpf', 'documento'],
+  numDoc: ['ndocumento', 'nodocumento', 'numdocumento', 'numerodocumento', 'ndoboleto', 'nboleto', 'numeroboleto', 'numerodoboleto'],
+  obs: ['observacao', 'obs', 'observacoes'],
+  pagoEm: ['pagoem', 'datapagamento', 'datadepagamento', 'pagamento'],
+  id: ['id'],
+  lancamento: ['lancamento'],
+  criado: ['cadastradoem', 'criadoem']
+};
+
+const ESTILO = (() => {
+  const fonte = (o = {}) => `<font>${o.b ? '<b/>' : ''}<sz val="${o.sz || 11}"/>${o.cor ? `<color rgb="FF${o.cor}"/>` : ''}<name val="Calibri"/><family val="2"/></font>`;
+  const fontes = [fonte(), fonte({ b: 1, cor: 'FFFFFF' }), fonte({ sz: 10, cor: '80868B' }), fonte({ b: 1, sz: 14 }), fonte({ b: 1 }), fonte({ b: 1, cor: 'A50E0E' }), fonte({ cor: '9A5B00' })];
+  const solido = cor => `<fill><patternFill patternType="solid"><fgColor rgb="FF${cor}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>', solido('1D6A56'), solido('E6F1ED')];
+  const fmts = [[164, 'dd/mm/yyyy'], [165, '"R$" #,##0.00'], [166, 'dd/mm/yyyy hh:mm'], [167, '[$-416]mmmm "de" yyyy']];
+  // nome: [formato, fonte, preenchimento, alinhamento]
+  const defs = {
+    padrao: [0, 0, 0], cab: [0, 1, 2, 'center'], cabEsq: [0, 1, 2, 'left'], data: [164, 0, 0, 'center'], centro: [0, 0, 0, 'center'],
+    moeda: [165, 0, 0], parc: [49, 0, 0, 'center'], texto: [49, 0, 0], cinza: [0, 2, 0, 'center'], cinzaDt: [166, 2, 0, 'center'],
+    titulo: [0, 3, 0], nota: [0, 2, 0], num: [0, 0, 0, 'center'],
+    mes: [167, 0, 0, 'left'], mesAt: [167, 4, 3, 'left'], moedaAt: [165, 4, 3], numAt: [0, 4, 3, 'center'],
+    verm: [0, 5, 0], moedaVerm: [165, 5, 0], numVerm: [0, 5, 0, 'center'],
+    ambar: [0, 6, 0], moedaAmbar: [165, 6, 0], numAmbar: [0, 6, 0, 'center']
+  };
+  const nomes = Object.keys(defs), idx = {};
+  nomes.forEach((n, i) => { idx[n] = i; });
+  const xfs = nomes.map(n => {
+    const [nf, f, fi, al] = defs[n];
+    const attrs = `numFmtId="${nf}" fontId="${f}" fillId="${fi}" borderId="0" xfId="0"` +
+      (nf ? ' applyNumberFormat="1"' : '') + (f ? ' applyFont="1"' : '') + (fi ? ' applyFill="1"' : '');
+    return al ? `<xf ${attrs} applyAlignment="1"><alignment horizontal="${al}" vertical="center"/></xf>` : `<xf ${attrs}/>`;
+  });
+  const dxfs = [
+    '<dxf><font><color rgb="FF1D7544"/></font><fill><patternFill patternType="solid"><bgColor rgb="FFE6F4EA"/></patternFill></fill></dxf>', // 0 pago
+    '<dxf><font><strike/><color rgb="FF9AA0A6"/></font></dxf>',                                                                       // 1 cancelado
+    '<dxf><font><color rgb="FFA50E0E"/></font><fill><patternFill patternType="solid"><bgColor rgb="FFFCE8E6"/></patternFill></fill></dxf>', // 2 vencido
+    '<dxf><fill><patternFill patternType="solid"><bgColor rgb="FFFEF7E0"/></patternFill></fill></dxf>'                                // 3 vence em 7 dias
+  ];
+  const xml = XML_TOPO + `<styleSheet xmlns="${NS_MAIN}">` +
+    `<numFmts count="${fmts.length}">${fmts.map(([id, c]) => `<numFmt numFmtId="${id}" formatCode="${xEsc(c)}"/>`).join('')}</numFmts>` +
+    `<fonts count="${fontes.length}">${fontes.join('')}</fonts>` +
+    `<fills count="${fills.length}">${fills.join('')}</fills>` +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    `<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>` +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+    `<dxfs count="${dxfs.length}">${dxfs.join('')}</dxfs>` +
+    '<tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>' +
+    '</styleSheet>';
+  return { idx, xml };
+})();
+
+const celTxt = (ref, est, v) => `<c r="${ref}" s="${ESTILO.idx[est]}" t="inlineStr"><is><t xml:space="preserve">${xEsc(v)}</t></is></c>`;
+const celNum = (ref, est, v) => `<c r="${ref}" s="${ESTILO.idx[est]}"><v>${v}</v></c>`;
+const celForm = (ref, est, f, cache) => `<c r="${ref}" s="${ESTILO.idx[est]}"><f>${xEsc(f)}</f><v>${cache}</v></c>`;
+
+function xmlAbaBoletos(lista) {
+  const ult = lista.length + 1;
+  const faixa = Math.max(5000, lista.length + 2000);
+  const UC = letraCol(COLS.length);
+  const cols = COLS.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.w}" style="${ESTILO.idx[c.s]}" customWidth="1"/>`).join('');
+  const linhas = [`<row r="1" ht="22" customHeight="1">${COLS.map((c, i) => celTxt(letraCol(i + 1) + '1', 'cab', c.h)).join('')}</row>`];
+  lista.forEach((b, k) => {
+    const r = k + 2;
+    const cels = COLS.map((c, i) => {
+      let v = b[c.k];
+      if (c.tipo === 'data') v = v ? isoParaSerial(v) : null;
+      if (v === '' || v == null || (typeof v === 'number' && !isFinite(v))) return '';
+      const ref = letraCol(i + 1) + r;
+      return c.tipo === 'txt' ? celTxt(ref, c.s, v) : celNum(ref, c.s, +v);
+    }).join('');
+    linhas.push(`<row r="${r}">${cels}</row>`);
+  });
+  const regra = (dxf, pri, f) => `<cfRule type="expression" dxfId="${dxf}" priority="${pri}"><formula>${xEsc(f)}</formula></cfRule>`;
+  return XML_TOPO + `<worksheet xmlns="${NS_MAIN}" xmlns:r="${NS_REL}">` +
+    '<sheetPr><tabColor rgb="FF1D6A56"/><pageSetUpPr fitToPage="1"/></sheetPr>' +
+    `<dimension ref="A1:${UC}${ult}"/>` +
+    '<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>' +
+    '<sheetFormatPr defaultRowHeight="15"/>' +
+    `<cols>${cols}</cols>` +
+    `<sheetData>${linhas.join('')}</sheetData>` +
+    `<autoFilter ref="A1:${UC}${ult}"/>` +
+    `<conditionalFormatting sqref="A2:${UC}${faixa}">` +
+      regra(2, 1, 'AND($B2="Em aberto",$A2<>"",$A2<TODAY())') +
+      regra(3, 2, 'AND($B2="Em aberto",$A2<>"",$A2-TODAY()<=7)') +
+      regra(0, 3, '$B2="Pago"') +
+      regra(1, 4, '$B2="Cancelado"') +
+    '</conditionalFormatting>' +
+    `<dataValidations count="1"><dataValidation type="list" allowBlank="1" showErrorMessage="1" errorTitle="Status" error="Use: Em aberto, Pago ou Cancelado." sqref="B2:B${faixa}"><formula1>"Em aberto,Pago,Cancelado"</formula1></dataValidation></dataValidations>` +
+    '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>' +
+    '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>' +
+    '</worksheet>';
+}
+
+function xmlAbaResumo(lista, hoje) {
+  const V = 'Boletos!$C:$C', S = 'Boletos!$B:$B', D = 'Boletos!$A:$A', P = 'Boletos!$K:$K';
+  const AB = `${S},"Em aberto"`;
+  const hs = isoParaSerial(hoje);
+  const soma = arr => arred2(arr.reduce((s, b) => s + (b.valor || 0), 0));
+  const abertos = lista.filter(b => b.status === 'Em aberto');
+  const comVenc = abertos.filter(b => b.vencimento);
+  const vs = b => isoParaSerial(b.vencimento);
+  const entre = (arr, a, z) => arr.filter(b => vs(b) >= a && vs(b) < z);
+  const mes0 = isoParaSerial(primeiroDoMes(hoje)), mes1 = isoParaSerial(primeiroDoMes(hoje, 1));
+  const pagosMes = lista.filter(b => b.status === 'Pago' && b.pagoEm && isoParaSerial(b.pagoEm) >= mes0 && isoParaSerial(b.pagoEm) < mes1);
+  const vencidos = comVenc.filter(b => vs(b) < hs);
+  const semana = comVenc.filter(b => vs(b) >= hs && vs(b) <= hs + 7);
+
+  const L = [];
+  L.push(`<row r="1" ht="22" customHeight="1">${celTxt('A1', 'titulo', 'Resumo dos boletos a cobrar')}</row>`);
+  L.push(`<row r="2">${celTxt('A2', 'nota', 'Atualiza sozinho com os dados da aba "Boletos".')}</row>`);
+  L.push(`<row r="4">${celTxt('A4', 'cabEsq', 'Situação')}${celTxt('B4', 'cab', 'Valor')}${celTxt('C4', 'cab', 'Parcelas')}</row>`);
+  const linhaSit = (r, rot, est, estM, estN, fS, fC, vS, vC) =>
+    `<row r="${r}">${celTxt('A' + r, est, rot)}${celForm('B' + r, estM, fS, vS)}${celForm('C' + r, estN, fC, vC)}</row>`;
+  L.push(linhaSit(5, 'Total em aberto', 'padrao', 'moeda', 'num', `SUMIFS(${V},${AB})`, `COUNTIFS(${AB})`, soma(abertos), abertos.length));
+  L.push(linhaSit(6, 'Vencidos (não pagos)', 'verm', 'moedaVerm', 'numVerm',
+    `SUMIFS(${V},${AB},${D},"<"&TODAY())`, `COUNTIFS(${AB},${D},"<"&TODAY())`, soma(vencidos), vencidos.length));
+  L.push(linhaSit(7, 'Vencem nos próximos 7 dias', 'ambar', 'moedaAmbar', 'numAmbar',
+    `SUMIFS(${V},${AB},${D},">="&TODAY(),${D},"<="&TODAY()+7)`, `COUNTIFS(${AB},${D},">="&TODAY(),${D},"<="&TODAY()+7)`, soma(semana), semana.length));
+  const iniMes = 'DATE(YEAR(TODAY()),MONTH(TODAY()),1)', fimMes = 'DATE(YEAR(TODAY()),MONTH(TODAY())+1,1)';
+  L.push(linhaSit(8, 'Recebido neste mês', 'padrao', 'moeda', 'num',
+    `SUMIFS(${V},${S},"Pago",${P},">="&${iniMes},${P},"<"&${fimMes})`, `COUNTIFS(${S},"Pago",${P},">="&${iniMes},${P},"<"&${fimMes})`, soma(pagosMes), pagosMes.length));
+
+  L.push(`<row r="10">${celTxt('A10', 'cabEsq', 'Mês de vencimento')}${celTxt('B10', 'cab', 'A receber (em aberto)')}${celTxt('C10', 'cab', 'Parcelas em aberto')}${celTxt('D10', 'cab', 'Já pago')}</row>`);
+  const antes = comVenc.filter(b => vs(b) < mes0);
+  L.push(`<row r="11">${celTxt('A11', 'verm', 'Meses anteriores (atrasados)')}${celForm('B11', 'moedaVerm', `SUMIFS(${V},${AB},${D},"<"&$A$12)`, soma(antes))}${celForm('C11', 'numVerm', `COUNTIFS(${AB},${D},"<"&$A$12)`, antes.length)}</row>`);
+  for (let i = 0; i < 12; i++) {
+    const r = 12 + i, a = isoParaSerial(primeiroDoMes(hoje, i)), z = isoParaSerial(primeiroDoMes(hoje, i + 1));
+    const fA = i === 0 ? 'DATE(YEAR(TODAY()),MONTH(TODAY()),1)' : `DATE(YEAR(A${r - 1}),MONTH(A${r - 1})+1,1)`;
+    const noMes = `${D},">="&A${r},${D},"<"&DATE(YEAR(A${r}),MONTH(A${r})+1,1)`;
+    const ab = entre(comVenc, a, z), pg = entre(lista.filter(b => b.status === 'Pago' && b.vencimento), a, z);
+    const at = i === 0;
+    L.push(`<row r="${r}">` +
+      celForm('A' + r, at ? 'mesAt' : 'mes', fA, a) +
+      celForm('B' + r, at ? 'moedaAt' : 'moeda', `SUMIFS(${V},${AB},${noMes})`, soma(ab)) +
+      celForm('C' + r, at ? 'numAt' : 'num', `COUNTIFS(${AB},${noMes})`, ab.length) +
+      celForm('D' + r, at ? 'moedaAt' : 'moeda', `SUMIFS(${V},${S},"Pago",${noMes})`, soma(pg)) +
+      '</row>');
+  }
+  const depoisS = isoParaSerial(primeiroDoMes(hoje, 12));
+  const depois = comVenc.filter(b => vs(b) >= depoisS);
+  L.push(`<row r="24">${celTxt('A24', 'padrao', 'Depois disso')}${celForm('B24', 'moeda', `SUMIFS(${V},${AB},${D},">="&DATE(YEAR(A23),MONTH(A23)+1,1))`, soma(depois))}${celForm('C24', 'num', `COUNTIFS(${AB},${D},">="&DATE(YEAR(A23),MONTH(A23)+1,1))`, depois.length)}</row>`);
+
+  return XML_TOPO + `<worksheet xmlns="${NS_MAIN}" xmlns:r="${NS_REL}">` +
+    '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+    '<dimension ref="A1:D24"/>' +
+    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
+    '<sheetFormatPr defaultRowHeight="15"/>' +
+    '<cols><col min="1" max="1" width="32" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="4" width="18" customWidth="1"/></cols>' +
+    `<sheetData>${L.join('')}</sheetData>` +
+    '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>' +
+    '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>' +
+    '</worksheet>';
+}
+
+/* --- ZIP (formato do .xlsx) --- */
+const CRC_TAB = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TAB[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function comprimir(u8) {
+  if (typeof CompressionStream === 'undefined') return null;
+  try { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()); }
+  catch (e) { return null; }
+}
+async function descomprimir(u8) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('Este navegador é antigo demais para ler a planilha. Use o Edge ou o Chrome atualizados.');
+  return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+}
+async function zipar(arquivos) {
+  const enc = new TextEncoder(), partes = [], central = [];
+  const d = new Date();
+  const hora = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dia = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  let pos = 0;
+  for (const [nomeTxt, conteudo] of arquivos) {
+    const nome = enc.encode(nomeTxt), bruto = enc.encode(conteudo), crc = crc32(bruto);
+    let dados = await comprimir(bruto), metodo = 8;
+    if (!dados || dados.length >= bruto.length) { dados = bruto; metodo = 0; }
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, metodo, true);
+    lh.setUint16(10, hora, true); lh.setUint16(12, dia, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, dados.length, true); lh.setUint32(22, bruto.length, true); lh.setUint16(26, nome.length, true);
+    partes.push(new Uint8Array(lh.buffer), nome, dados);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, metodo, true);
+    ch.setUint16(12, hora, true); ch.setUint16(14, dia, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, dados.length, true); ch.setUint32(24, bruto.length, true); ch.setUint16(28, nome.length, true);
+    ch.setUint32(42, pos, true);
+    central.push(new Uint8Array(ch.buffer), nome);
+    pos += 30 + nome.length + dados.length;
+  }
+  const tamCentral = central.reduce((s, u) => s + u.length, 0);
+  const fim = new DataView(new ArrayBuffer(22));
+  fim.setUint32(0, 0x06054b50, true); fim.setUint16(8, arquivos.length, true); fim.setUint16(10, arquivos.length, true);
+  fim.setUint32(12, tamCentral, true); fim.setUint32(16, pos, true);
+  return new Blob([...partes, ...central, new Uint8Array(fim.buffer)], { type: XLSX_MIME });
+}
+function abrirZip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf), dec = new TextDecoder();
+  let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('Este arquivo não é uma planilha .xlsx válida.');
+  const mapa = {};
+  let p = dv.getUint32(e + 16, true);
+  const n = dv.getUint16(e + 10, true);
+  for (let k = 0; k < n && dv.getUint32(p, true) === 0x02014b50; k++) {
+    const ln = dv.getUint16(p + 28, true), lx = dv.getUint16(p + 30, true), lc = dv.getUint16(p + 32, true);
+    const nome = dec.decode(u8.subarray(p + 46, p + 46 + ln));
+    mapa[nome.toLowerCase()] = { metodo: dv.getUint16(p + 10, true), tam: dv.getUint32(p + 20, true), pos: dv.getUint32(p + 42, true) };
+    p += 46 + ln + lx + lc;
+  }
+  return async nome => {
+    const a = mapa[nome.replace(/^\//, '').toLowerCase()];
+    if (!a) return null;
+    const ini = a.pos + 30 + dv.getUint16(a.pos + 26, true) + dv.getUint16(a.pos + 28, true);
+    const dados = u8.subarray(ini, ini + a.tam);
+    return dec.decode(a.metodo === 0 ? dados : await descomprimir(dados));
+  };
+}
+
+async function gerarXlsx(lista) {
+  const hoje = hojeLocal();
+  const ord = ordenarLista(lista.slice());
+  const agora = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const ct = XML_TOPO + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+    '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+    '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+    '</Types>';
+  const rels = XML_TOPO + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+    '</Relationships>';
+  const core = XML_TOPO + '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+    `<dc:title>Boletos a cobrar</dc:title><dcterms:created xsi:type="dcterms:W3CDTF">${agora}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${agora}</dcterms:modified></cp:coreProperties>`;
+  const app = XML_TOPO + '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Boletos a cobrar</Application></Properties>';
+  const wb = XML_TOPO + `<workbook xmlns="${NS_MAIN}" xmlns:r="${NS_REL}">` +
+    '<bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="15000" activeTab="0"/></bookViews>' +
+    '<sheets><sheet name="Boletos" sheetId="1" r:id="rId1"/><sheet name="Resumo" sheetId="2" r:id="rId2"/></sheets>' +
+    `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Boletos!$A$1:$${letraCol(COLS.length)}$${ord.length + 1}</definedName></definedNames>` +
+    '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>';
+  const wbRels = XML_TOPO + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>' +
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '</Relationships>';
+  return zipar([
+    ['[Content_Types].xml', ct], ['_rels/.rels', rels], ['docProps/core.xml', core], ['docProps/app.xml', app],
+    ['xl/workbook.xml', wb], ['xl/_rels/workbook.xml.rels', wbRels], ['xl/styles.xml', ESTILO.xml],
+    ['xl/worksheets/sheet1.xml', xmlAbaBoletos(ord)], ['xl/worksheets/sheet2.xml', xmlAbaResumo(ord, hoje)]
+  ]);
+}
+
+/* --- Leitura (inclusive de planilhas que foram salvas pelo Excel) --- */
+const parseXml = s => new DOMParser().parseFromString(s, 'application/xml');
+const tags = (el, nome) => Array.from(el.getElementsByTagNameNS('*', nome));
+const filhos = (el, nome) => el ? Array.from(el.children).filter(x => x.localName === nome) : [];
+const textoDe = el => el ? tags(el, 't').filter(t => t.parentNode.localName !== 'rPh').map(t => t.textContent).join('') : '';
+
+function chaveCab(v) {
+  if (typeof v !== 'string') return null;
+  const n = semAcento(v).replace(/[^a-z0-9]/g, '');
+  return Object.keys(ALIAS).find(k => ALIAS[k].includes(n)) || null;
+}
+const txtCel = v => v == null ? '' : typeof v === 'number' ? String(v) : String(v).trim();
+function paraIso(v, off) {
+  if (typeof v === 'number') return v > 0 ? serialParaIso(v + off) : '';
+  const s = txtCel(v);
+  let m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+}
+function paraValor(v) { if (typeof v === 'number') return arred2(v); const n = lerValor(v); return isFinite(n) ? n : 0; }
+function paraParcela(v, off) {
+  if (typeof v === 'number') {
+    if (Number.isInteger(v) && v > 1000) { const { m, d } = partes(serialParaIso(v + off)); return `${d}/${m}`; } // "2/5" que o Excel virou data
+    return String(v);
+  }
+  return txtCel(v);
+}
+const inteiro = v => { const n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : null; };
+function normStatus(v) { const s = semAcento(txtCel(v)); return s.startsWith('pag') ? 'Pago' : s.startsWith('canc') ? 'Cancelado' : 'Em aberto'; }
+
+function gradeDaAba(doc, sst) {
+  const grade = [];
+  let rSeq = 0;
+  tags(doc, 'row').forEach(row => {
+    const r = parseInt(row.getAttribute('r'), 10) || rSeq + 1;
+    rSeq = r;
+    const arr = [];
+    let cSeq = 0;
+    filhos(row, 'c').forEach(c => {
+      const ref = c.getAttribute('r');
+      const ci = ref ? numCol(ref.replace(/[^A-Za-z]/g, '')) : cSeq + 1;
+      cSeq = ci;
+      const t = c.getAttribute('t'), vEl = filhos(c, 'v')[0], vTxt = vEl ? vEl.textContent : '';
+      let val = '';
+      if (t === 's') val = vTxt !== '' ? (sst[+vTxt] ?? '') : '';
+      else if (t === 'inlineStr') val = textoDe(filhos(c, 'is')[0]);
+      else if (t === 'str' || t === 'd') val = vTxt;
+      else if (t === 'b') val = vTxt === '1';
+      else if (t === 'e') val = '';
+      else if (vTxt !== '') { const n = Number(vTxt); val = isFinite(n) ? n : vTxt; }
+      arr[ci - 1] = val;
+    });
+    grade[r - 1] = arr;
+  });
+  return grade;
+}
+
+function boletosDaGrade(grade, off) {
+  let mapa = null, cab = -1;
+  for (let i = 0; i < Math.min(grade.length, 10); i++) {
+    const m = {};
+    (grade[i] || []).forEach((v, ci) => { const k = chaveCab(v); if (k && !(k in m)) m[k] = ci; });
+    if ('vencimento' in m && 'valor' in m) { mapa = m; cab = i; break; }
+  }
+  if (!mapa) return null;
+  const lista = [];
+  for (let i = cab + 1; i < grade.length; i++) {
+    const row = grade[i];
+    if (!row) continue;
+    const g = k => (k in mapa ? row[mapa[k]] : '');
+    const vencimento = paraIso(g('vencimento'), off), valor = paraValor(g('valor'));
+    if (!vencimento && !valor) continue;
+    const criado = g('criado');
+    lista.push({
+      id: inteiro(g('id')), lancamento: inteiro(g('lancamento')), vencimento, status: normStatus(g('status')), valor,
+      parcela: paraParcela(g('parcela'), off), setor: txtCel(g('setor')), pdv: txtCel(g('pdv')), cliente: txtCel(g('cliente')),
+      doc: txtCel(g('doc')), numDoc: txtCel(g('numDoc')), obs: txtCel(g('obs')), pagoEm: paraIso(g('pagoEm'), off),
+      criado: typeof criado === 'number' ? criado + off : ''
+    });
+  }
+  // Linhas digitadas ou copiadas no Excel ganham um ID único
+  const vistos = new Set();
+  let max = lista.reduce((m, b) => Math.max(m, b.id || 0), 0);
+  lista.forEach(b => { if (!b.id || vistos.has(b.id)) b.id = ++max; vistos.add(b.id); });
+  return lista;
+}
+
+async function lerXlsx(buf) {
+  const u8 = new Uint8Array(buf);
+  if (u8.length >= 4 && u8[0] === 0xD0 && u8[1] === 0xCF && u8[2] === 0x11 && u8[3] === 0xE0) {
+    throw new Error('Esta planilha está protegida (senha ou rótulo de confidencialidade do Office) e o cadastro não consegue ler. No Excel, salve uma cópia sem proteção e abra essa cópia.');
+  }
+  if (!(u8[0] === 0x50 && u8[1] === 0x4B)) throw new Error('Este arquivo não é uma planilha .xlsx.');
+  const zip = abrirZip(buf);
+  let wbCaminho = 'xl/workbook.xml';
+  const relsRaiz = await zip('_rels/.rels');
+  if (relsRaiz) {
+    const r = tags(parseXml(relsRaiz), 'Relationship').find(x => /\/officeDocument$/.test(x.getAttribute('Type') || ''));
+    if (r) wbCaminho = r.getAttribute('Target').replace(/^\//, '');
+  }
+  const pasta = wbCaminho.replace(/[^/]*$/, '');
+  const wbXml = await zip(wbCaminho);
+  if (!wbXml) throw new Error('Este arquivo não é uma planilha .xlsx válida.');
+  const wb = parseXml(wbXml);
+  const pr = tags(wb, 'workbookPr')[0];
+  const off = pr && /^(1|true)$/i.test(pr.getAttribute('date1904') || '') ? 1462 : 0;
+
+  const alvos = {};
+  let sstCaminho = pasta + 'sharedStrings.xml';
+  const wbRels = await zip(pasta + '_rels/' + wbCaminho.split('/').pop() + '.rels');
+  if (wbRels) tags(parseXml(wbRels), 'Relationship').forEach(r => {
+    const t = r.getAttribute('Target') || '';
+    const cam = t.startsWith('/') ? t.slice(1) : pasta + t;
+    alvos[r.getAttribute('Id')] = cam;
+    if (/\/sharedStrings$/.test(r.getAttribute('Type') || '')) sstCaminho = cam;
+  });
+  const sstXml = await zip(sstCaminho);
+  const sst = sstXml ? tags(parseXml(sstXml), 'si').map(textoDe) : [];
+
+  const abas = tags(wb, 'sheet').map(s => ({
+    nome: s.getAttribute('name') || '',
+    cam: alvos[s.getAttributeNS(NS_REL, 'id') || s.getAttribute('r:id') || (Array.from(s.attributes).find(a => a.localName === 'id') || {}).value]
+  })).filter(a => a.cam);
+  abas.sort((a, b) => (semAcento(b.nome) === 'boletos') - (semAcento(a.nome) === 'boletos'));
+  for (const aba of abas) {
+    const xml = await zip(aba.cam);
+    if (!xml) continue;
+    const lista = boletosDaGrade(gradeDaAba(parseXml(xml), sst), off);
+    if (lista) return lista;
+  }
+  throw new Error('Não encontrei a aba "Boletos" nesta planilha (precisa ter as colunas Vencimento e Valor).');
+}
+
+function ordenarLista(l) {
+  return l.sort((a, b) =>
+    (a.vencimento || '9999').localeCompare(b.vencimento || '9999') ||
+    (a.setor || '').localeCompare(b.setor || '', 'pt-BR') ||
+    (a.pdv || '').localeCompare(b.pdv || '', 'pt-BR') || a.id - b.id);
+}
+
+
+/* =========================================================
+   ONDE OS DADOS FICAM: arquivo .xlsx (Edge/Chrome) ou o navegador
+   ========================================================= */
+const TEM_ARQUIVO = typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
+const TIPOS_XLSX = [{ description: 'Planilha do Excel', accept: { [XLSX_MIME]: ['.xlsx'] } }];
+const CHAVE_NAV = 'boletosCobrar.dados.v1';
+const CHAVE_MODO = 'boletosCobrar.modo';
+const CHAVE_PEND = 'boletosCobrar.naoGravado.v1';
+
+const estado = {
+  hoje: hojeLocal(),
+  boletos: [],
+  previa: [],
+  removeu: false,
+  filtroLanc: null,
+  ultimoPorPdv: new Map(),
+  fonte: null,        // 'arquivo' | 'navegador'
+  handle: null,
+  nome: '',
+  lastMod: 0,
+  pendente: false,
+  salvando: false,
+  salvoEm: null,
+  erroSalvar: '',
+  erroTecnico: '',
+  semPermissao: false,
+  lembrado: null,
+  tentativa: 0
+};
+
+/* Guarda qual arquivo foi usado, para reabrir com um clique */
+function idb() {
+  return new Promise((ok, falha) => {
+    const r = indexedDB.open('boletos-a-cobrar', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => falha(r.error);
+  });
+}
+async function idbGet(k) {
+  try {
+    const db = await idb();
+    return await new Promise((ok, falha) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => ok(q.result); q.onerror = () => falha(q.error); });
+  } catch (e) { return undefined; }
+}
+async function idbSet(k, v) {
+  try {
+    const db = await idb();
+    await new Promise((ok, falha) => {
+      const t = db.transaction('kv', 'readwrite');
+      if (v === undefined) t.objectStore('kv').delete(k); else t.objectStore('kv').put(v, k);
+      t.oncomplete = ok; t.onerror = () => falha(t.error);
+    });
+  } catch (e) {}
+}
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
+
+function lerNavegador() { try { const j = JSON.parse(lsGet(CHAVE_NAV) || 'null'); return Array.isArray(j) ? j : null; } catch (e) { return null; } }
+
+/* Promessa com tempo limite, para a tela nunca ficar parada esperando */
+function comTempo(p, ms) {
+  let t;
+  return Promise.race([
+    Promise.resolve(p).finally(() => clearTimeout(t)),
+    new Promise((_, falha) => { t = setTimeout(() => falha(Object.assign(new Error('demorou demais'), { name: 'Tempo' })), ms); })
+  ]);
+}
+
+/* ---------- Permissão de gravar no arquivo ---------- */
+async function permissaoAtual(handle) {
+  try { return handle.queryPermission ? await comTempo(handle.queryPermission({ mode: 'readwrite' }), 4000) : 'granted'; }
+  catch (e) { return 'prompt'; }
+}
+/* Pede a permissão ANTES de qualquer outra coisa demorada (o navegador só pergunta logo depois de um clique) */
+async function garantirPermissao(handle) {
+  if ((await permissaoAtual(handle)) === 'granted') return;
+  let r;
+  try { r = await handle.requestPermission({ mode: 'readwrite' }); }
+  catch (e) { throw Object.assign(new Error(e.message || 'precisa de um clique'), { name: 'PrecisaClique', original: e }); }
+  if (r !== 'granted') throw Object.assign(new Error(`o navegador respondeu "${r}"`), { name: 'Negado' });
+}
+
+async function gravarNoArquivo(handle, lista) {
+  await garantirPermissao(handle);
+  estado.semPermissao = false;
+  const blob = await gerarXlsx(lista);
+  const w = await handle.createWritable();
+  try { await w.write(blob); await w.close(); }
+  catch (e) { try { await w.abort(); } catch (_) {} throw e; }
+  return (await handle.getFile()).lastModified;
+}
+
+function msgErroSalvar(e) {
+  const n = e && e.name, m = (e && e.message) || '';
+  if (n === 'PrecisaClique') return 'Falta liberar a gravação na planilha. Clique em “Permitir gravar” e aceite a pergunta do navegador.';
+  if (n === 'Negado') return 'O navegador não liberou a gravação na planilha. Clique em “Permitir gravar” e escolha permitir. Se a pergunta nem aparecer, o navegador está bloqueando gravar arquivos (pode ser regra da empresa): use “Guardar neste navegador”.';
+  if (n === 'NotFoundError') return 'Não achei mais a planilha (foi movida, renomeada ou apagada?). Use “Trocar de planilha” para abri-la de novo.';
+  if (n === 'QuotaExceededError') return 'Não há espaço em disco para salvar a planilha.';
+  if (n === 'SecurityError' || /safe ?browsing/i.test(m)) return 'O navegador bloqueou a gravação do arquivo por segurança (pode ser regra da empresa). Tente criar a planilha em outra pasta, ou use “Guardar neste navegador”.';
+  if (n === 'NotAllowedError') return 'O Windows não deixou gravar na planilha. Normalmente é porque ela está aberta no Excel: feche e clique em “Salvar agora”. Se continuar, a pasta pode não permitir gravação: use “Trocar de planilha” e crie a planilha em outra pasta (ex.: Documentos).';
+  if (n === 'Tempo') return 'A gravação demorou demais. Se a planilha estiver numa pasta da rede ou sincronizando, aguarde e clique em “Salvar agora”.';
+  return 'Não consegui gravar na planilha. Se ela estiver aberta no Excel, feche e clique em “Salvar agora”.';
+}
+function msgErroLer(e) {
+  const n = e && e.name;
+  if (n === 'Tempo') return 'A planilha demorou demais para abrir. Se ela estiver aberta no Excel ou sincronizando (rede/OneDrive), feche e tente de novo.';
+  if (n === 'NotFoundError') return 'Não achei a planilha (foi movida, renomeada ou apagada?). Use “Abrir planilha existente”.';
+  if (n === 'NotAllowedError' || n === 'SecurityError') return 'O navegador não deu acesso à planilha. Clique de novo e escolha permitir.';
+  if (n === 'NotReadableError') return 'Não consegui ler a planilha agora. Se ela estiver aberta no Excel, feche e tente de novo.';
+  return (e && e.message) || String(e);
+}
+const detalheErro = e => e ? `${e.name || 'Erro'}: ${e.message || ''}`.slice(0, 240) : '';
+
+/* Cópia de segurança do que ainda não foi gravado (sobrevive ao F5) */
+function guardarNaoGravado() {
+  if (estado.fonte === 'arquivo') lsSet(CHAVE_PEND, JSON.stringify({ nome: estado.nome, ts: Date.now(), boletos: estado.boletos }));
+}
+function falhaGravar(e) {
+  console.warn(e);
+  if (e && (e.name === 'PrecisaClique' || e.name === 'Negado')) estado.semPermissao = true;
+  estado.erroSalvar = msgErroSalvar(e);
+  estado.erroTecnico = detalheErro((e && e.original) || e);
+  guardarNaoGravado();
+  renderChip();
+  return Object.assign(new Error(estado.erroSalvar), { naoSalvo: true });
+}
+
+/* Fila: uma gravação de cada vez */
+let fila = Promise.resolve();
+function enfileirar(fn) { const p = fila.then(fn); fila = p.catch(() => {}); return p; }
+
+async function lerPlanilhaSeMudou(forcar) {
+  const f = await estado.handle.getFile();
+  if (!forcar && f.lastModified === estado.lastMod) return null;
+  return { lista: await lerXlsx(await f.arrayBuffer()), lastMod: f.lastModified };
+}
+async function recarregarSeMudou(forcar) {
+  if (estado.fonte !== 'arquivo' || estado.pendente) return false;
+  const r = await comTempo(lerPlanilhaSeMudou(forcar), 10000);
+  if (!r) return false;
+  estado.boletos = ordenarLista(r.lista);
+  estado.lastMod = r.lastMod;
+  return true;
+}
+
+async function persistir() {
+  if (estado.fonte === 'navegador') {
+    if (!lsSet(CHAVE_NAV, JSON.stringify(estado.boletos))) {
+      estado.erroSalvar = 'O navegador não deixou guardar os dados. Baixe a planilha agora para não perder.';
+      renderChip();
+      throw Object.assign(new Error(estado.erroSalvar), { naoSalvo: true });
+    }
+    estado.pendente = false; estado.erroSalvar = ''; estado.salvoEm = new Date();
+    renderChip();
+    return;
+  }
+  estado.salvando = true; renderChip();
+  try {
+    estado.lastMod = await comTempo(gravarNoArquivo(estado.handle, estado.boletos), 30000);
+    estado.pendente = false; estado.erroSalvar = ''; estado.erroTecnico = ''; estado.salvoEm = new Date();
+    lsDel(CHAVE_PEND);
+  } catch (e) {
+    throw falhaGravar(e);
+  } finally {
+    estado.salvando = false; renderChip();
+  }
+}
+const salvarAgora = () => enfileirar(persistir);
+
+/* Toda mudança passa por aqui: pede permissão, relê a planilha (se mudou no Excel), aplica e grava */
+function alterar(fn) {
+  return enfileirar(async () => {
+    let erroPerm = null;
+    if (estado.fonte === 'arquivo') {
+      try { await garantirPermissao(estado.handle); estado.semPermissao = false; } catch (e) { erroPerm = e; }
+      if (!erroPerm && !estado.pendente) { try { await recarregarSeMudou(false); } catch (e) { console.warn(e); } }
+    }
+    const r = fn(estado.boletos);
+    ordenarLista(estado.boletos);
+    estado.pendente = true;
+    guardarNaoGravado();
+    renderTudo();
+    if (erroPerm) throw falhaGravar(erroPerm);
+    await persistir();
+    return r;
+  });
+}
+
+/* Clique do usuário para liberar a gravação */
+async function pedirPermissao() {
+  let r = 'prompt';
+  try { r = await estado.handle.requestPermission({ mode: 'readwrite' }); }
+  catch (e) { estado.erroTecnico = detalheErro(e); }
+  estado.semPermissao = r !== 'granted';
+  renderChip();
+  if (estado.semPermissao) {
+    estado.erroSalvar = msgErroSalvar({ name: 'Negado' });
+    abrirMenu(true);
+    return;
+  }
+  toast('Gravação na planilha liberada');
+  if (estado.pendente) {
+    try { await salvarAgora(); toast('Planilha salva'); } catch (e) { toast(e.message, true); }
+  }
+}
+
+async function lerHandle(handle) {
+  const f = await handle.getFile();
+  if (!f.size) return { f, lista: null, erro: null };
+  try { return { f, lista: await lerXlsx(await f.arrayBuffer()), erro: null }; }
+  catch (e) { return { f, lista: null, erro: e }; }
+}
+
+async function conectar(handle, nova, token) {
+  const { f, lista: lida, erro } = await comTempo(lerHandle(handle), 15000);
+  let lista = lida;
+  if (erro) {
+    if (!nova) throw erro;
+    if (!await confirmar('Substituir este arquivo?', `"${handle.name}" já existe e não é uma planilha deste cadastro. Quer substituir por uma planilha nova?`, 'Substituir', true)) return false;
+  }
+  if (token !== estado.tentativa) return false;           // outra tentativa começou nesse meio-tempo
+  if (lista) {
+    estado.lastMod = f.lastModified;
+    if (nova) toast(`"${handle.name}" já tinha ${plural(lista.length, 'parcela')}. Abrimos ela.`);
+  } else {
+    lista = estado.boletos.slice();                       // planilha nova (leva junto o que estava no navegador, se houver)
+    estado.lastMod = await comTempo(gravarNoArquivo(handle, lista), 15000);
+  }
+  Object.assign(estado, { fonte: 'arquivo', handle, nome: handle.name, boletos: ordenarLista(lista), pendente: false, erroSalvar: '', erroTecnico: '', salvoEm: null, lembrado: handle });
+  estado.semPermissao = (await permissaoAtual(handle)) !== 'granted';
+  lsSet(CHAVE_MODO, 'arquivo');
+  idbSet('arquivo', handle);
+  entrarApp();
+  setTimeout(oferecerRecuperacao, 60);
+  return true;
+}
+
+async function oferecerRecuperacao() {
+  let p = null;
+  try { p = JSON.parse(lsGet(CHAVE_PEND) || 'null'); } catch (e) {}
+  if (!p || !Array.isArray(p.boletos) || estado.fonte !== 'arquivo' || p.nome !== estado.nome) return;
+  const d = new Date(p.ts);
+  const quando = `${pad(d.getDate())}/${pad(d.getMonth() + 1)} às ${horaCurta(d)}`;
+  const ok = await confirmar('Recuperar o que não foi gravado?',
+    `Em ${quando} ficaram alterações sem gravar na planilha. Quer recuperar e gravar agora? ` +
+    'Se você mexeu na planilha direto pelo Excel depois disso, essas mudanças do Excel serão substituídas.', 'Recuperar', false, 'Descartar');
+  if (!ok) {
+    // Nada se perde: antes de descartar, baixa uma cópia do que não tinha sido gravado
+    baixarArquivo(await gerarXlsx(p.boletos), `Boletos não gravados (${pad(d.getDate())}-${pad(d.getMonth() + 1)} ${pad(d.getHours())}h${pad(d.getMinutes())}).xlsx`);
+    lsDel(CHAVE_PEND);
+    toast('Descartado. Uma cópia do que não tinha sido gravado foi baixada para a pasta Downloads.');
+    return;
+  }
+  estado.boletos = ordenarLista(p.boletos);
+  estado.pendente = true;
+  renderTudo();
+  try { await salvarAgora(); toast('Alterações recuperadas e gravadas na planilha'); }
+  catch (e) { toast('Recuperado aqui, mas ainda não gravado. ' + e.message, true); }
+}
+
+function entrarNavegador(lista) {
+  Object.assign(estado, { fonte: 'navegador', handle: null, nome: '', pendente: false, erroSalvar: '', erroTecnico: '', semPermissao: false });
+  estado.boletos = ordenarLista(lista || lerNavegador() || []);
+  lsSet(CHAVE_MODO, 'navegador');
+  if (lista) lsSet(CHAVE_NAV, JSON.stringify(estado.boletos));
+  entrarApp();
+}
+
+/* ---------- Tela inicial ---------- */
+function mostrarInicio(erro, alternativa) {
+  $('#telaInicio').hidden = false;
+  $('#topoDir').hidden = true;
+  $$('.painel').forEach(p => p.classList.remove('ativo'));
+  $('#sub').textContent = 'Escolha a planilha';
+  const btnC = $('#btnContinuar');
+  btnC.hidden = !(TEM_ARQUIVO && estado.lembrado);
+  if (estado.lembrado) btnC.innerHTML = `Continuar com <b>${esc(estado.lembrado.name)}</b>`;
+  $('#opcoesArquivo').hidden = !TEM_ARQUIVO;
+  $('#passos').hidden = !TEM_ARQUIVO;
+  const semArq = !TEM_ARQUIVO || alternativa;
+  $('#semArquivo').hidden = !semArq;
+  $('#semArquivoTxt').textContent = TEM_ARQUIVO
+    ? 'Se o seu navegador não deixar gravar em arquivo, você pode guardar os boletos aqui no navegador e baixar a planilha do Excel quando quiser.'
+    : 'Este navegador não deixa gravar direto num arquivo. Abra este arquivo no Microsoft Edge ou no Google Chrome para isso, ou continue guardando os boletos aqui no navegador e baixe a planilha do Excel sempre que quiser.';
+  $('#inicioErro').textContent = erro || '';
+  abrindo(false);
+}
+
+function abrindo(on, nome) {
+  $('#inicioStatus').textContent = on ? `Abrindo ${nome || 'a planilha'}…` : '';
+  $$('#telaInicio button').forEach(b => { b.disabled = !!on; });
+}
+
+function entrarApp() {
+  abrindo(false);
+  $('#telaInicio').hidden = true;
+  $('#topoDir').hidden = false;
+  mostrarAba($('.aba.ativa') ? $('.aba.ativa').dataset.aba : 'novo');
+  renderTudo();
+}
+
+async function acaoInicio(fn) {
+  $('#inicioErro').textContent = '';
+  try { await fn(); }
+  catch (e) {
+    if (e && e.name === 'AbortError') { abrindo(false); return; }      // a pessoa cancelou a janela
+    console.warn(e);
+    estado.tentativa++;
+    const bloqueado = e && (e.name === 'SecurityError' || e.name === 'NotAllowedError' || e.name === 'TypeError');
+    const msg = msgErroLer(e);
+    mostrarInicio(msg + (e && e.message && msg !== e.message && e.name !== 'Tempo' ? `  (${detalheErro(e)})` : ''), bloqueado);
+  }
+}
+
+$('#btnCriar').addEventListener('click', () => acaoInicio(async () => {
+  const h = await window.showSaveFilePicker({ suggestedName: 'Boletos a cobrar.xlsx', types: TIPOS_XLSX, excludeAcceptAllOption: true });
+  abrindo(true, h.name);
+  await conectar(h, true, ++estado.tentativa);
+}));
+$('#btnAbrir').addEventListener('click', () => acaoInicio(async () => {
+  const [h] = await window.showOpenFilePicker({ types: TIPOS_XLSX, multiple: false });
+  try { await h.requestPermission({ mode: 'readwrite' }); } catch (e) { /* pede de novo no primeiro lançamento */ }
+  abrindo(true, h.name);
+  await conectar(h, false, ++estado.tentativa);
+}));
+$('#btnContinuar').addEventListener('click', () => acaoInicio(async () => {
+  const h = estado.lembrado;
+  const r = await h.requestPermission({ mode: 'readwrite' });
+  if (r !== 'granted') throw Object.assign(new Error('O navegador não liberou o acesso à planilha. Clique em Continuar de novo e escolha permitir, ou use “Abrir planilha existente”.'), { name: 'Permissao' });
+  abrindo(true, h.name);
+  await conectar(h, false, ++estado.tentativa);
+}));
+$('#btnNavegador').addEventListener('click', () => entrarNavegador());
+$('#btnImportarIni').addEventListener('click', () => $('#inputImport').click());
+
+$('#inputImport').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const lista = await lerXlsx(await f.arrayBuffer());
+    const atuais = estado.fonte === 'navegador' ? estado.boletos.length : (lerNavegador() || []).length;
+    if (atuais && !await confirmar('Substituir os boletos?', `Os ${plural(atuais, 'boleto')} guardados neste navegador serão trocados pelos ${lista.length} da planilha "${f.name}".`, 'Substituir', true)) return;
+    entrarNavegador(lista);
+    toast(`${plural(lista.length, 'parcela')} importadas de "${f.name}"`);
+  } catch (err) {
+    toast(msgErroLer(err), true);
+  }
+});
+
+/* ---------- Indicador do arquivo (topo) ---------- */
+function horaCurta(d) { return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : ''; }
+function renderChip() {
+  const c = $('#chipArq');
+  if (!estado.fonte) return;
+  let cls = 'ok', txt;
+  if (estado.fonte === 'navegador') {
+    cls = estado.erroSalvar ? 'erro' : 'nav';
+    txt = estado.erroSalvar ? 'Não guardado' : 'Guardado só neste navegador';
+  } else if (estado.salvando) {
+    cls = ''; txt = 'Salvando na planilha…';
+  } else if (estado.pendente || estado.erroSalvar) {
+    cls = 'erro'; txt = estado.semPermissao ? 'Não salvo · clique para permitir' : 'Não salvo · clique aqui';
+  } else if (estado.semPermissao) {
+    cls = 'nav'; txt = 'Clique para permitir gravar';
+  } else {
+    txt = estado.nome + (estado.salvoEm ? ` · salvo ${horaCurta(estado.salvoEm)}` : '');
+  }
+  c.className = 'chip-arq ' + cls;
+  $('#chipTxt').textContent = txt;
+  c.title = estado.fonte === 'arquivo' ? `Planilha: ${estado.nome}` : 'Os dados estão guardados neste navegador';
+  $('#btnAtualizar').hidden = estado.fonte !== 'arquivo';
+  if (!$('#menuArq').hidden) montarMenu();
+}
+
+function montarMenu() {
+  const m = $('#menuArq');
+  const itens = [];
+  if (estado.fonte === 'arquivo') {
+    if (estado.erroSalvar) {
+      itens.push(`<div class="info erro">${esc(estado.erroSalvar)}${estado.erroTecnico ? `<small>Detalhe técnico: ${esc(estado.erroTecnico)}</small>` : ''}</div>`);
+    } else if (estado.semPermissao) {
+      itens.push(`<div class="info">O navegador ainda não liberou gravar em <b>${esc(estado.nome)}</b>. Clique em “Permitir gravar” e aceite a pergunta do navegador.</div>`);
+    } else {
+      itens.push(`<div class="info">Gravando em <b>${esc(estado.nome)}</b>.<br>Para ver no Excel, abra esse arquivo pela pasta onde você salvou. Feche o Excel antes de lançar por aqui.</div>`);
+    }
+    if (estado.semPermissao) itens.push('<button type="button" class="dest" data-m="permitir">Permitir gravar</button>');
+    if (estado.pendente) itens.push(`<button type="button"${estado.semPermissao ? '' : ' class="dest"'} data-m="salvar">Salvar agora</button>`);
+    itens.push('<button type="button" data-m="reler">Reler a planilha</button>');
+    itens.push('<button type="button" data-m="baixar">Baixar uma cópia (.xlsx)</button>');
+    if (estado.erroSalvar || estado.semPermissao) itens.push('<button type="button" data-m="paraNavegador">Guardar neste navegador</button>');
+    itens.push('<button type="button" data-m="trocar">Trocar de planilha</button>');
+  } else {
+    itens.push(`<div class="info${estado.erroSalvar ? ' erro' : ''}">${esc(estado.erroSalvar || 'Os boletos estão guardados só neste navegador, neste computador. Baixe a planilha de vez em quando para ter uma cópia.')}</div>`);
+    itens.push('<button type="button" class="dest" data-m="baixar">Baixar planilha (.xlsx)</button>');
+    itens.push('<button type="button" data-m="importar">Importar planilha (.xlsx)</button>');
+    if (TEM_ARQUIVO) itens.push('<button type="button" data-m="paraArquivo">Passar a gravar num arquivo Excel</button>');
+  }
+  m.innerHTML = itens.join('');
+}
+function abrirMenu(abrir) {
+  const m = $('#menuArq');
+  m.hidden = !abrir;
+  $('#chipArq').setAttribute('aria-expanded', String(abrir));
+  if (abrir) montarMenu();
+}
+$('#chipArq').addEventListener('click', e => {
+  e.stopPropagation();
+  // Sem permissão: o próprio clique no indicador já pede a permissão ao navegador
+  if (estado.fonte === 'arquivo' && estado.semPermissao && $('#menuArq').hidden) { pedirPermissao(); return; }
+  abrirMenu($('#menuArq').hidden);
+});
+document.addEventListener('click', e => { if (!e.target.closest('.arq')) abrirMenu(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') abrirMenu(false); });
+
+$('#menuArq').addEventListener('click', async e => {
+  const b = e.target.closest('[data-m]');
+  if (!b) return;
+  abrirMenu(false);
+  const acao = b.dataset.m;
+  if (acao === 'permitir') {
+    pedirPermissao();
+  } else if (acao === 'salvar') {
+    try { await salvarAgora(); toast('Planilha salva'); } catch (err) { toast(err.message, true); }
+  } else if (acao === 'reler') {
+    releitura();
+  } else if (acao === 'baixar') {
+    const nome = estado.fonte === 'arquivo'
+      ? estado.nome.replace(/\.xlsx$/i, '') + ` (cópia ${fmtData(hojeLocal()).replace(/\//g, '-')}).xlsx`
+      : `Boletos a cobrar ${fmtData(hojeLocal()).replace(/\//g, '-')}.xlsx`;
+    baixarArquivo(await gerarXlsx(estado.boletos), nome);
+  } else if (acao === 'importar') {
+    $('#inputImport').click();
+  } else if (acao === 'paraNavegador') {
+    if (!await confirmar('Guardar neste navegador?', 'Os boletos (inclusive o que não foi gravado) passam a ficar guardados neste navegador, neste computador. A planilha .xlsx deixa de ser atualizada; use “Baixar planilha” sempre que quiser uma cópia em Excel.', 'Guardar no navegador')) return;
+    const lista = estado.boletos.slice();
+    lsDel(CHAVE_PEND);
+    entrarNavegador(lista);
+    toast('Pronto: os boletos agora ficam guardados neste navegador');
+  } else if (acao === 'trocar' || acao === 'paraArquivo') {
+    if (estado.pendente && !await confirmar('Há alterações não gravadas', 'Elas ficam guardadas como cópia de segurança e serão oferecidas de volta quando você abrir esta mesma planilha.', 'Trocar mesmo assim', true)) return;
+    if (acao === 'trocar') { estado.boletos = []; }
+    estado.fonte = null; estado.pendente = false;
+    mostrarInicio();
+  }
+});
+
+function releitura() {
+  return enfileirar(async () => {
+    if (estado.fonte !== 'arquivo') { renderTudo(); return; }
+    if (estado.pendente) { toast('Há alterações ainda não gravadas. Clique em “Salvar agora” primeiro.', true); return; }
+    try { await recarregarSeMudou(true); renderTudo(); toast('Lista relida da planilha'); }
+    catch (e) { toast(msgErroLer(e), true); }
+  });
+}
+
+/* Ao voltar para esta janela, confere se a planilha mudou no Excel */
+function conferirMudancas() {
+  if (estado.fonte !== 'arquivo' || estado.pendente) return;
+  enfileirar(async () => {
+    try { if (await recarregarSeMudou(false)) { renderTudo(); toast('Atualizado com as mudanças feitas na planilha'); } }
+    catch (e) { console.warn(e); }
+  });
+}
+window.addEventListener('focus', conferirMudancas);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) conferirMudancas(); });
+window.addEventListener('beforeunload', e => { if (estado.pendente) { e.preventDefault(); e.returnValue = ''; } });
+
+
+/* =========================================================
+   Abas
+   ========================================================= */
+function mostrarAba(nome) {
+  $$('.aba').forEach(b => b.classList.toggle('ativa', b.dataset.aba === nome));
+  $$('.painel').forEach(p => p.classList.toggle('ativo', p.id === 'aba-' + nome));
+  window.scrollTo(0, 0);
+}
+$$('.aba').forEach(b => b.addEventListener('click', () => mostrarAba(b.dataset.aba)));
+
+/* =========================================================
+   Novo lançamento
+   ========================================================= */
+function gerarPrevia() {
+  const total = limitar(parseInt($('#qtd').value, 10) || 1, 1, 120);
+  const inicio = limitar(parseInt($('#inicio').value, 10) || 1, 1, total);
+  const valor = lerValor($('#valor').value);
+  const venc1 = $('#venc1').value;
+  const modo = $('input[name=modo]:checked').value;
+  const intervalo = $('#intervalo').value;
+  const dias = limitar(parseInt($('#dias').value, 10) || 30, 1, 365);
+  const parcelado = total > 1;
+
+  $('#boxModo').hidden = !parcelado;
+  $('#boxIntervalo').hidden = !parcelado;
+  $('#boxInicio').hidden = !parcelado;
+  $('#boxDias').hidden = !parcelado || intervalo !== 'dias';
+  $('#inicio').max = total;
+  $('#rotVenc').textContent = parcelado ? `Vencimento da parcela ${inicio}/${total} *` : 'Vencimento *';
+  $('#rotValor').textContent = !parcelado ? 'Valor *' : (modo === 'total' ? 'Valor total do boleto *' : 'Valor de cada parcela *');
+
+  estado.previa = [];
+  estado.removeu = false;
+  if (valor > 0 && venc1) {
+    const totalCent = Math.round(valor * 100);
+    const base = Math.floor(totalCent / total);
+    const centavos = n => (modo === 'total' && parcelado)
+      ? base + (n === 1 ? totalCent - base * total : 0)    // sobra de centavos vai na 1ª parcela
+      : totalCent;
+    for (let n = inicio, k = 0; n <= total; n++, k++) {
+      const venc = intervalo === 'dias' && parcelado ? somaDias(venc1, k * dias) : somaMeses(venc1, k);
+      estado.previa.push({ numero: n, total, valor: centavos(n) / 100, venc });
+    }
+  }
+  renderPrevia();
+}
+
+function renderPrevia() {
+  const tb = $('#previaCorpo');
+  if (!estado.previa.length) {
+    tb.innerHTML = `<tr><td colspan="4" class="vazio-previa">${estado.removeu
+      ? 'Você tirou todas as parcelas. Mude algum campo acima para gerar de novo.'
+      : 'Preencha o <b>valor</b> e o <b>vencimento</b> para ver as parcelas aqui.'}</td></tr>`;
+    atualizarTotalPrevia();
+    return;
+  }
+  tb.innerHTML = estado.previa.map((p, i) => {
+    let ds = '<span class="ds erro">informe a data</span>';
+    if (p.venc) {
+      const d = diaSemana(p.venc), fds = d === 0 || d === 6, passou = p.venc < estado.hoje;
+      ds = `<span class="ds ${fds || passou ? 'alerta' : ''}">${DIAS_LONGO[d]}${fds ? ' · fim de semana' : ''}${passou ? ' · já venceu' : ''}</span>`;
+    }
+    return `<tr>
+      <td><span class="parc">${p.numero}/${p.total}</span></td>
+      <td><div class="venc-cel"><input type="date" value="${p.venc}" data-i="${i}" data-campo="venc" aria-label="Vencimento da parcela ${p.numero}">${ds}</div></td>
+      <td class="${p.valor > 0 ? '' : 'invalido'}"><input class="num" inputmode="decimal" value="${p.valor > 0 ? NUM2.format(p.valor) : ''}" data-i="${i}" data-campo="valor" aria-label="Valor da parcela ${p.numero}"></td>
+      <td class="dir"><button type="button" class="icone del" data-rem="${i}" title="Tirar esta parcela">${ICON.x}</button></td>
+    </tr>`;
+  }).join('');
+  atualizarTotalPrevia();
+}
+
+function atualizarTotalPrevia() {
+  const n = estado.previa.length;
+  const ult = estado.previa.reduce((m, p) => p.venc > m ? p.venc : m, '');
+  $('#totalPrevia').innerHTML = n
+    ? `<b>${BRL.format(somaCentavos(estado.previa))}</b> em ${plural(n, 'parcela')}${n > 1 && ult ? ' · última vence em ' + fmtData(ult) : ''}`
+    : '';
+  const btn = $('#btnSalvar');
+  btn.textContent = n > 1 ? `Salvar ${n} parcelas` : 'Salvar boleto';
+  btn.disabled = !n;
+}
+
+$('#previaCorpo').addEventListener('change', e => {
+  const el = e.target, p = estado.previa[Number(el.dataset.i)];
+  if (!p) return;
+  if (el.dataset.campo === 'venc') { p.venc = el.value; renderPrevia(); }
+  if (el.dataset.campo === 'valor') {
+    const v = lerValor(el.value);
+    p.valor = v > 0 ? v : NaN;
+    if (v > 0) el.value = NUM2.format(v);
+    el.closest('td').classList.toggle('invalido', !(v > 0));
+    atualizarTotalPrevia();
+  }
+});
+$('#previaCorpo').addEventListener('click', e => {
+  const b = e.target.closest('[data-rem]');
+  if (!b) return;
+  estado.previa.splice(Number(b.dataset.rem), 1);
+  estado.removeu = true;
+  renderPrevia();
+});
+
+['qtd', 'valor', 'venc1', 'intervalo', 'dias', 'inicio'].forEach(id => $('#' + id).addEventListener('input', gerarPrevia));
+$$('input[name=modo]').forEach(r => r.addEventListener('change', gerarPrevia));
+$('#valor').addEventListener('blur', e => { const v = lerValor(e.target.value); if (v > 0) e.target.value = NUM2.format(v); });
+
+/* CNPJ/CPF: máscara e conferência */
+function validarDocUI(final) {
+  const c = checarDoc($('#doc').value), dica = $('#dicaDoc');
+  dica.className = 'dica';
+  dica.textContent = '';
+  if (c.tipo && c.ok) { dica.textContent = '✓ ' + c.tipo + ' válido'; dica.classList.add('ok'); }
+  else if (c.tipo) { dica.textContent = c.tipo + ' com dígito verificador errado'; dica.classList.add('erro'); }
+  else if (c.incompleto && final) { dica.textContent = 'Use 11 dígitos (CPF) ou 14 caracteres (CNPJ)'; dica.classList.add('erro'); }
+  return c;
+}
+$('#doc').addEventListener('input', e => { e.target.value = formatarDoc(e.target.value); validarDocUI(false); });
+$('#doc').addEventListener('blur', () => validarDocUI(true));
+
+/* PDV já conhecido: preenche setor, cliente e CNPJ/CPF */
+$('#pdv').addEventListener('change', () => {
+  const b = estado.ultimoPorPdv.get(semAcento($('#pdv').value.trim()));
+  $('#dicaPdv').textContent = '';
+  if (!b) return;
+  let preencheu = false;
+  [['setor', b.setor], ['cliente', b.cliente], ['doc', b.doc]].forEach(([id, v]) => {
+    const el = $('#' + id);
+    if (!el.value.trim() && v) { el.value = v; preencheu = true; el.closest('.campo').classList.remove('invalido'); }
+  });
+  if (preencheu) { $('#dicaPdv').textContent = 'Setor, cliente e CNPJ/CPF preenchidos com o último lançamento deste PDV.'; validarDocUI(true); }
+});
+
+$('#form').addEventListener('input', e => { const c = e.target.closest('.campo'); if (c) c.classList.remove('invalido'); });
+$('#form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.preventDefault(); });
+
+function limparForm() {
+  $('#form').reset();
+  $$('.campo.invalido').forEach(c => c.classList.remove('invalido'));
+  $('#dicaDoc').textContent = '';
+  $('#dicaPdv').textContent = '';
+  gerarPrevia();
+}
+$('#btnLimpar').addEventListener('click', () => { limparForm(); $('#setor').focus(); });
+
+function possiveisRepetidos(doc) {
+  const d = docLimpo(doc);
+  return estado.boletos.filter(b => b.status !== 'Cancelado' && docLimpo(b.doc) === d &&
+    estado.previa.some(p => p.venc === b.vencimento && Math.round(p.valor * 100) === Math.round(b.valor * 100)));
+}
+
+function lancar(dados) {
+  return alterar(lista => {
+    let id = lista.reduce((m, b) => Math.max(m, b.id || 0), 0);
+    const lanc = lista.reduce((m, b) => Math.max(m, b.lancamento || 0), 0) + 1;
+    const criado = agoraSerial();
+    dados.parcelas.forEach(p => lista.push({
+      id: ++id, lancamento: lanc, vencimento: p.vencimento, status: 'Em aberto', valor: arred2(p.valor),
+      parcela: `${p.numero}/${p.total}`, setor: dados.setor, pdv: dados.pdv, cliente: dados.cliente,
+      doc: dados.doc, numDoc: dados.numDoc, obs: dados.obs, pagoEm: '', criado
+    }));
+    return { qtd: dados.parcelas.length, lancamento: lanc };
+  });
+}
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const val = id => $('#' + id).value.trim();
+  const dados = {
+    setor: val('setor'), pdv: val('pdv'), cliente: val('cliente'),
+    doc: formatarDoc(val('doc')), numDoc: val('numDoc'), obs: val('obs'),
+    parcelas: estado.previa.map(p => ({ numero: p.numero, total: p.total, valor: p.valor, vencimento: p.venc }))
+  };
+
+  const faltam = [];
+  [['setor', 'setor'], ['pdv', 'PDV'], ['doc', 'CNPJ/CPF']].forEach(([id, nome]) => {
+    if (!dados[id]) { faltam.push(nome); $('#' + id).closest('.campo').classList.add('invalido'); }
+  });
+  if (faltam.length) { toast('Preencha: ' + faltam.join(', '), true); $('.campo.invalido input').focus(); return; }
+  if (!dados.parcelas.length) { toast('Não há parcelas para salvar.', true); return; }
+  if (estado.previa.some(p => !p.venc || !(p.valor > 0))) { toast('Confira as datas e valores das parcelas marcadas.', true); return; }
+
+  const c = validarDocUI(true);
+  if (!c.ok) {
+    const seguir = await confirmar('CNPJ/CPF parece errado',
+      `"${dados.doc}" não passou na conferência dos dígitos. Quer salvar mesmo assim?`, 'Salvar mesmo assim');
+    if (!seguir) { $('#doc').focus(); return; }
+  }
+  const rep = possiveisRepetidos(dados.doc);
+  if (rep.length) {
+    const r = rep[0];
+    const seguir = await confirmar('Possível lançamento repetido',
+      `Já existe ${rep.length === 1 ? 'um boleto' : rep.length + ' boletos'} com o mesmo CNPJ/CPF, vencimento e valor ` +
+      `(ex.: parcela ${r.parcela}, ${fmtData(r.vencimento)}, ${BRL.format(r.valor)}). Salvar mesmo assim?`, 'Salvar mesmo assim');
+    if (!seguir) return;
+  }
+
+  const btn = $('#btnSalvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+  try {
+    const r = await lancar(dados);
+    toast(`${r.qtd === 1 ? 'Boleto salvo' : r.qtd + ' parcelas salvas'} na planilha · lançamento #${r.lancamento}`);
+    limparForm();
+    $('#setor').focus();
+  } catch (err) {
+    if (err && err.naoSalvo) {           // ficou registrado aqui, mas a planilha não foi gravada
+      toast('Lançado, mas ainda NÃO gravado na planilha. ' + err.message, true);
+      limparForm();
+    } else {
+      toast((err && err.message) || String(err), true);
+      atualizarTotalPrevia();
+    }
+  }
+});
+
+/* =========================================================
+   Boletos lançados
+   ========================================================= */
+function situacao(b) {
+  if (b.status === 'Pago') return { cls: 'pago', txt: b.pagoEm ? 'Pago em ' + fmtData(b.pagoEm).slice(0, 5) : 'Pago' };
+  if (b.status === 'Cancelado') return { cls: 'cancelado', txt: 'Cancelado' };
+  if (!b.vencimento) return { cls: 'futuro', txt: 'Sem vencimento' };
+  const d = difDias(b.vencimento, estado.hoje);
+  if (d < 0) return { cls: 'vencido', txt: `Vencido há ${plural(-d, 'dia')}` };
+  if (d === 0) return { cls: 'hoje', txt: 'Vence hoje' };
+  if (d === 1) return { cls: 'breve', txt: 'Vence amanhã' };
+  if (d <= 7) return { cls: 'breve', txt: `Vence em ${d} dias` };
+  return { cls: 'futuro', txt: `Em ${d} dias` };
+}
+
+function passaFiltro(b) {
+  if (estado.filtroLanc != null) return b.lancamento === estado.filtroLanc;
+  const st = $('#fStatus').value, setor = $('#fSetor').value, busca = semAcento($('#fBusca').value.trim());
+  const aberto = b.status === 'Em aberto';
+  const d = b.vencimento ? difDias(b.vencimento, estado.hoje) : null;
+  const ok = {
+    aberto: aberto,
+    vencido: aberto && d !== null && d < 0,
+    semana: aberto && d !== null && d >= 0 && d <= 7,
+    mes: aberto && !!b.vencimento && b.vencimento.slice(0, 7) === estado.hoje.slice(0, 7),
+    pago: b.status === 'Pago',
+    cancelado: b.status === 'Cancelado',
+    todos: true
+  }[st];
+  if (!ok) return false;
+  if (setor && b.setor !== setor) return false;
+  if (busca) {
+    const alvo = semAcento([b.cliente, b.pdv, b.setor, b.doc, docLimpo(b.doc), b.numDoc, b.obs, b.parcela, '#' + b.lancamento].join(' '));
+    if (!busca.split(/\s+/).every(t => alvo.includes(t))) return false;
+  }
+  return true;
+}
+
+function itemHtml(b) {
+  const s = situacao(b);
+  const l1 = [b.pdv, b.cliente].filter(Boolean).map(esc).join(' · ') || '—';
+  const l2 = [b.setor, b.doc, b.numDoc && 'Boleto ' + b.numDoc, b.obs].filter(Boolean).map(esc).join(' · ');
+  let acoes = '';
+  if (b.status === 'Em aberto') {
+    acoes = `<button type="button" class="btn-ok" data-acao="pago" data-id="${b.id}" title="Marcar como pago">${ICON.check}<span>Recebido</span></button>
+             <button type="button" class="icone" data-acao="cancelar" data-id="${b.id}" title="Cancelar boleto">${ICON.ban}</button>`;
+  } else {
+    acoes = `<button type="button" class="icone" data-acao="reabrir" data-id="${b.id}" title="Voltar para Em aberto">${ICON.undo}</button>`;
+  }
+  acoes += `<button type="button" class="icone del" data-acao="excluir" data-id="${b.id}" title="Excluir da planilha">${ICON.trash}</button>`;
+  const parc = b.lancamento
+    ? `<button type="button" class="parc" data-lanc="${b.lancamento}" title="Ver todas as parcelas deste lançamento">${esc(b.parcela || '—')}</button>`
+    : `<span class="parc">${esc(b.parcela || '—')}</span>`;
+  return `<div class="item st-${s.cls}" data-item="${b.id}">
+    <div class="data"><b class="num">${b.vencimento ? fmtData(b.vencimento).slice(0, 5) : '--'}</b><span>${b.vencimento ? DIAS[diaSemana(b.vencimento)] : ''}</span></div>
+    <div class="info"><div class="t1" title="${l1}">${l1}</div><div class="t2" title="${l2}">${l2}</div></div>
+    <div class="meta">${parc}<span class="tag ${s.cls}">${s.txt}</span></div>
+    <div class="valor num">${BRL.format(b.valor)}</div>
+    <div class="acoes">${acoes}</div>
+  </div>`;
+}
+
+function renderLista() {
+  const box = $('#lista');
+  $('#chipLanc').hidden = estado.filtroLanc == null;
+  $('#chipLancN').textContent = '#' + estado.filtroLanc;
+
+  const itens = estado.boletos.filter(passaFiltro).sort((a, b) =>
+    (a.vencimento || '9999').localeCompare(b.vencimento || '9999') ||
+    (a.setor || '').localeCompare(b.setor || '', 'pt-BR') || (a.pdv || '').localeCompare(b.pdv || '', 'pt-BR') || a.id - b.id);
+
+  $('#resumoFiltro').textContent = itens.length ? `${plural(itens.length, 'parcela')} · ${BRL.format(somaCentavos(itens))}` : '';
+
+  if (!itens.length) {
+    box.innerHTML = estado.boletos.length
+      ? '<div class="vazio"><b>Nada por aqui</b>Nenhum boleto com esses filtros.</div>'
+      : '<div class="vazio"><b>Nenhum boleto lançado ainda</b>Use a aba "Novo lançamento" para cadastrar o primeiro.</div>';
+    return;
+  }
+
+  const grupos = new Map();
+  itens.forEach(b => {
+    const k = b.vencimento ? b.vencimento.slice(0, 7) : 'sem-data';
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(b);
+  });
+  const mesAtual = estado.hoje.slice(0, 7);
+  box.innerHTML = [...grupos].map(([k, arr]) => {
+    const atraso = k !== 'sem-data' && k < mesAtual && arr.some(b => b.status === 'Em aberto');
+    const pill = k === mesAtual ? '<span class="pill">mês atual</span>' : (atraso ? '<span class="pill atraso">em atraso</span>' : '');
+    return `<section class="grupo">
+      <div class="grupo-topo">
+        <h3>${k === 'sem-data' ? 'Sem vencimento' : nomeMes(k)}${pill}</h3>
+        <div class="tot num">${plural(arr.length, 'parcela')} · <b>${BRL.format(somaCentavos(arr))}</b></div>
+      </div>
+      <div class="lista-card">${arr.map(itemHtml).join('')}</div>
+    </section>`;
+  }).join('');
+}
+
+function renderKpis() {
+  const ab = estado.boletos.filter(b => b.status === 'Em aberto');
+  const comData = ab.filter(b => b.vencimento);
+  const venc = comData.filter(b => b.vencimento < estado.hoje);
+  const sem = comData.filter(b => { const d = difDias(b.vencimento, estado.hoje); return d >= 0 && d <= 7; });
+  const mes = comData.filter(b => b.vencimento.slice(0, 7) === estado.hoje.slice(0, 7));
+  const qtd = arr => arr.length ? plural(arr.length, 'parcela') : 'nenhuma';
+
+  $('#kVenc').textContent = BRL.format(somaCentavos(venc)); $('#kVencQ').textContent = qtd(venc);
+  $('#kSem').textContent = BRL.format(somaCentavos(sem));   $('#kSemQ').textContent = qtd(sem);
+  $('#kMes').textContent = BRL.format(somaCentavos(mes));   $('#kMesQ').textContent = qtd(mes);
+  $('#kTot').textContent = BRL.format(somaCentavos(ab));    $('#kTotQ').textContent = qtd(ab);
+  $('#kMesRot').textContent = 'A receber em ' + MESES[partes(estado.hoje).m - 1];
+
+  const badge = $('#badgeVenc');
+  badge.hidden = !venc.length;
+  badge.textContent = venc.length;
+
+  $('#sub').textContent = estado.boletos.length
+    ? `${plural(ab.length, 'parcela')} em aberto · ${BRL.format(somaCentavos(ab))}` + (venc.length ? ` · ${venc.length} vencida${venc.length > 1 ? 's' : ''}` : '')
+    : 'Nenhum boleto lançado ainda';
+}
+
+function atualizarSugestoes() {
+  const setores = [...new Set(estado.boletos.map(b => b.setor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  $('#dlSetores').innerHTML = setores.map(s => `<option value="${esc(s)}"></option>`).join('');
+
+  estado.ultimoPorPdv = new Map();
+  const porNome = new Map();
+  [...estado.boletos].sort((a, b) => a.id - b.id).forEach(b => {
+    if (!b.pdv) return;
+    estado.ultimoPorPdv.set(semAcento(b.pdv), b);
+    porNome.set(b.pdv, b);
+  });
+  $('#dlPdvs').innerHTML = [...porNome.values()].sort((a, b) => a.pdv.localeCompare(b.pdv, 'pt-BR'))
+    .map(b => `<option value="${esc(b.pdv)}">${esc([b.cliente, b.setor].filter(Boolean).join(' · '))}</option>`).join('');
+
+  const sel = $('#fSetor'), atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os setores</option>' + setores.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  sel.value = setores.includes(atual) ? atual : '';
+}
+
+function renderTudo() {
+  estado.hoje = hojeLocal();
+  atualizarSugestoes();
+  renderKpis();
+  renderLista();
+  renderChip();
+}
+
+/* Filtros */
+['fBusca', 'fSetor', 'fStatus'].forEach(id => $('#' + id).addEventListener('input', () => { estado.filtroLanc = null; renderLista(); }));
+$('#btnAtualizar').addEventListener('click', releitura);
+$('#chipLancX').addEventListener('click', () => { estado.filtroLanc = null; renderLista(); });
+$$('.kpi').forEach(k => k.addEventListener('click', () => {
+  estado.filtroLanc = null;
+  $('#fStatus').value = k.dataset.filtro;
+  $('#fBusca').value = '';
+  $('#fSetor').value = '';
+  mostrarAba('lista');
+  renderLista();
+}));
+
+/* Ações em cada parcela */
+$('#lista').addEventListener('click', async e => {
+  const lanc = e.target.closest('[data-lanc]');
+  if (lanc) { estado.filtroLanc = Number(lanc.dataset.lanc); renderLista(); window.scrollTo(0, 0); return; }
+
+  const a = e.target.closest('[data-acao]');
+  if (!a) return;
+  const id = Number(a.dataset.id);
+  const b = estado.boletos.find(x => x.id === id);
+  if (!b) return;
+  const desc = `${b.pdv}${b.cliente ? ' · ' + b.cliente : ''}, parcela ${b.parcela}, ${BRL.format(b.valor)}, vencimento ${fmtData(b.vencimento)}.`;
+  // Identifica a parcela pelos dados (o ID pode mudar se a planilha foi editada no Excel)
+  const assinatura = x => [x.vencimento, x.valor, x.parcela, docLimpo(x.doc), x.pdv].join('|');
+  const alvo = assinatura(b);
+  const achar = lista => lista.find(x => x.id === id && assinatura(x) === alvo) || lista.find(x => assinatura(x) === alvo);
+
+  let fn, msg;
+  const mudarStatus = st => lista => { const x = achar(lista); if (!x) throw new Error('Esta parcela mudou na planilha. Confira a lista e tente de novo.'); x.status = st; x.pagoEm = st === 'Pago' ? hojeLocal() : ''; };
+  switch (a.dataset.acao) {
+    case 'pago': fn = mudarStatus('Pago'); msg = 'Marcado como recebido'; break;
+    case 'reabrir': fn = mudarStatus('Em aberto'); msg = 'Voltou para Em aberto'; break;
+    case 'cancelar':
+      if (!await confirmar('Cancelar este boleto?', desc + ' Ele continua na planilha (riscado) e sai dos totais em aberto.', 'Cancelar boleto')) return;
+      fn = mudarStatus('Cancelado'); msg = 'Boleto cancelado'; break;
+    case 'excluir':
+      if (!await confirmar('Excluir da planilha?', desc + ' A linha será apagada da planilha.', 'Excluir', true)) return;
+      fn = lista => { const x = achar(lista); if (!x) throw new Error('Esta parcela mudou na planilha. Confira a lista e tente de novo.'); lista.splice(lista.indexOf(x), 1); };
+      msg = 'Boleto excluído'; break;
+    default: return;
+  }
+  const linha = a.closest('.item');
+  linha.classList.add('ocupado');
+  try {
+    await alterar(fn);
+    toast(msg);
+  } catch (err) {
+    renderTudo();
+    toast(err.naoSalvo ? 'Feito aqui, mas ainda NÃO gravado na planilha. ' + err.message : err.message, true);
+  }
+});
+
+/* =========================================================
+   Início
+   ========================================================= */
+async function iniciar() {
+  gerarPrevia();
+  const modo = lsGet(CHAVE_MODO);
+  if (!TEM_ARQUIVO || modo === 'navegador') {
+    if (modo === 'navegador' || lerNavegador()) entrarNavegador(); else mostrarInicio();
+    return;
+  }
+  // A tela inicial aparece na hora; a reabertura automática tenta em segundo plano
+  mostrarInicio();
+  let h;
+  try { h = await comTempo(idbGet('arquivo'), 3000); } catch (e) {}
+  if (!h || estado.fonte) return;
+  estado.lembrado = h;
+  if (!$('#telaInicio').hidden) mostrarInicio();
+  if ((await permissaoAtual(h)) !== 'granted' || estado.fonte) return;
+  const token = ++estado.tentativa;
+  abrindo(true, h.name);
+  try { await conectar(h, false, token); }
+  catch (e) {
+    console.warn(e);
+    if (token === estado.tentativa && !estado.fonte) { estado.tentativa++; mostrarInicio(msgErroLer(e)); }
+  }
+}
+window.__cadastroOk = true;
+iniciar();
+</script>
+</body>
+</html>

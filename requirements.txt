@@ -1,0 +1,17 @@
+pandas
+numpy
+matplotlib
+openpyxl
+jupyter
+
+# Manutenção preditiva (KNN)
+scikit-learn
+imbalanced-learn
+
+# Roteirização (Comida di Buteco)
+ortools
+requests
+geopy
+beautifulsoup4
+playwright
+nest_asyncio
